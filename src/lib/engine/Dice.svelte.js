@@ -9,10 +9,10 @@ export class Dice extends Stats {
     Object.assign(this, { id, name, count, sides, modifier });
   }
 
-  roll(random = Math.random) {
+  roll() {
     const rolls = [];
     for (let index = 0; index < this.count; index += 1) {
-      rolls.push(Math.floor(random() * this.sides) + 1);
+      rolls.push(Math.floor(Math.random() * this.sides) + 1);
     }
     return { rolls, modifier: this.modifier, total: rolls.reduce((sum, roll) => sum + roll, this.modifier) };
   }

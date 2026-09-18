@@ -98,13 +98,13 @@ describe('generic engine objects', () => {
     const game = createGame();
     const phases = [];
     game.events.on('turn:phase-changed', ({ phase }) => phases.push(phase));
-    game.dice.roll = () => ({ rolls: [4], modifier: 0, total: 4 });
     await game.startGame();
     expect(game.getCurrentPlayer().id).toBe('player-1');
     expect(game.turn.number).toBe(1);
     await game.actions.find((action) => action.id === 'roll').perform(game);
+    const rolled = game.lastRoll.total;
     await game.actions.find((action) => action.id === 'move').perform(game, game.getCurrentPlayer());
-    expect(game.players[0].position).toBe(4);
+    expect(game.players[0].position).toBe(rolled);
     await game.endTurn();
     expect(game.getCurrentPlayer().id).toBe('player-2');
     expect(game.turn.number).toBe(2);

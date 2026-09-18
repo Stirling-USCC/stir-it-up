@@ -18,9 +18,9 @@ export class Deck extends Stats {
     await this.game?.events.emit('deck:reset', { deck: this });
   }
 
-  async shuffle(random = Math.random) {
+  async shuffle() {
     for (let index = this.drawPile.length - 1; index > 0; index -= 1) {
-      const swapIndex = Math.floor(random() * (index + 1));
+      const swapIndex = Math.floor(Math.random() * (index + 1));
       [this.drawPile[index], this.drawPile[swapIndex]] = [this.drawPile[swapIndex], this.drawPile[index]];
     }
     await this.game?.events.emit('deck:shuffled', { deck: this });
