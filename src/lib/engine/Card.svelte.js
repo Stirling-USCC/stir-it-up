@@ -9,4 +9,10 @@ export class Card extends Stats {
   async onDraw(_game, _player) {}
   async onPlay(_game, _player) {}
   async onDiscard(_game, _player) {}
+
+  async play(player = this.game?.getCurrentPlayer() ?? null) {
+    await this.onPlay(this.game, player);
+    await this.game?.events.emit('card:played', { card: this, player });
+    await this.game?.logEvent(`${player?.name ?? 'Someone'} played ${this.name}.`, 'card');
+  }
 }

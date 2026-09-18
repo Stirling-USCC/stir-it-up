@@ -36,9 +36,14 @@ export class Deck extends Stats {
   }
 
   async discard(card, player = null) {
+    if (!this.cards.includes(card)) throw new Error('Card does not belong to this deck');
+    if (this.drawPile.includes(card) || this.discardPile.includes(card)) {
+      throw new Error('Card must be drawn before it can be discarded');
+    }
     this.discardPile.push(card);
     await card.onDiscard(this.game, player);
     await this.game?.events.emit('card:discarded', { deck: this, card, player });
+    await this.game?.logEvent(`${card.name} was discarded to ${this.name}.`, 'card');
     return card;
   }
 }

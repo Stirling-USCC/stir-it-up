@@ -1,6 +1,8 @@
 import { Stats } from './Stats.svelte.js';
 
 export class Square extends Stats {
+  position = $state(0);
+
   constructor({ id, name, description = '', position = 0, row, column, icon = '·', className = '', stats = {} }) {
     super(stats);
     Object.assign(this, { id, name, description, position, row, column, icon, className });

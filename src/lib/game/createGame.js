@@ -15,18 +15,8 @@ export function createGame() {
     icon: '·'
   }));
 
-  const game = new Game({
-    board: new Board(squares),
-    players: [
-      new Player({ id: 'player-1', name: 'Player One', icon: '●', className: 'bg-primary' }),
-      new Player({ id: 'player-2', name: 'Player Two', icon: '◆', className: 'bg-success' })
-    ],
-    decks: [new Deck({ id: 'deck-1', name: 'Deck 1' })],
-    dice: new Dice({ id: 'demo-d6', name: 'One six-sided die' })
-  });
-
   // These actions demonstrate the engine. Replace them when actual rules are designed.
-  game.actions = [
+  const actions = [
     new Action({
       id: 'start', label: 'Start game', icon: 'bi-play-fill',
       available: (game) => game.status === 'waiting',
@@ -54,7 +44,15 @@ export function createGame() {
       perform: (game) => game.endTurn()
     })
   ];
-  for (const action of game.actions) game.attach(action);
 
-  return game;
+  return new Game({
+    board: new Board(squares),
+    players: [
+      new Player({ id: 'player-1', name: 'Player One', icon: '●', className: 'bg-primary' }),
+      new Player({ id: 'player-2', name: 'Player Two', icon: '◆', className: 'bg-success' })
+    ],
+    decks: [new Deck({ id: 'deck-1', name: 'Deck 1' })],
+    dice: new Dice({ id: 'demo-d6', name: 'One six-sided die' }),
+    actions
+  });
 }

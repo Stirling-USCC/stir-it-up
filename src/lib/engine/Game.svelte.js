@@ -14,6 +14,7 @@ export class Game extends Stats {
   constructor({ board, players = [], decks = [], dice, rules = [], actions = [], stats = {}, phases } = {}) {
     super(stats);
     this.board = board;
+    this.board.game = this;
     this.dice = dice;
     this.game = this;
     this.events = new EventBus();
@@ -45,6 +46,15 @@ export class Game extends Stats {
     return this.getPlayerById(this.turn.currentPlayerId);
   }
 
+  getNextActivePlayer(afterIndex) {
+    for (let offset = 1; offset <= this.players.length; offset += 1) {
+      const index = (afterIndex + offset) % this.players.length;
+      const player = this.players[index];
+      if (player.active) return player;
+    }
+    return null;
+  }
+
   getAvailableActions() {
     const player = this.getCurrentPlayer();
     return this.actions.filter((action) => action.available(this, player));
@@ -60,7 +70,7 @@ export class Game extends Stats {
 
   async addPlayer(player) {
     if (this.getPlayerById(player.id)) throw new Error(`Player ID already exists: ${player.id}`);
-    player.position = this.board.resolvePosition(player.position);
+    player.position = this.board.squares.length ? this.board.resolvePosition(player.position) : 0;
     this.attach(player);
     this.players.push(player);
     await this.events.emit('player:added', { player });
@@ -72,14 +82,22 @@ export class Game extends Stats {
     const id = typeof playerOrId === 'string' ? playerOrId : playerOrId.id;
     const index = this.players.findIndex((player) => player.id === id);
     if (index < 0) return null;
+    const wasCurrent = this.turn.currentPlayerId === id;
+    if (wasCurrent && this.status === 'playing') {
+      await this.changePhase(this.turn.phases.at(-1));
+      await this.events.emit('turn:ended', { number: this.turn.number, player: this.players[index] });
+    }
     const [player] = this.players.splice(index, 1);
     player.game = null;
+    for (const item of player.inventory) item.game = null;
+    for (const effect of player.effects) effect.game = null;
     await this.events.emit('player:removed', { player });
     await this.logEvent(`${player.name} left the game.`, 'player');
-    if (this.turn.currentPlayerId === id) {
-      const next = this.players.find((candidate) => candidate.active);
-      if (next) await this.changeCurrentPlayer(next.id);
-      else await this.finishGame();
+    if (wasCurrent) {
+      const next = this.getNextActivePlayer(index - 1);
+      await this.changeCurrentPlayer(next?.id ?? null);
+      if (next && this.status === 'playing') await this.beginTurn();
+      if (!next && this.status === 'playing') await this.finishGame();
     }
     return player;
   }
@@ -105,13 +123,14 @@ export class Game extends Stats {
   }
 
   async changeCurrentPlayer(playerOrId) {
-    const id = typeof playerOrId === 'string' ? playerOrId : playerOrId.id;
-    const player = this.getPlayerById(id);
-    if (!player || !player.active) throw new Error('Current player must be active and in the game');
+    const id = playerOrId === null ? null : typeof playerOrId === 'string' ? playerOrId : playerOrId.id;
+    const player = id === null ? null : this.getPlayerById(id);
+    if (id !== null && (!player || !player.active)) throw new Error('Current player must be active and in the game');
     const previousPlayerId = this.turn.currentPlayerId;
+    if (previousPlayerId === id) return player;
     this.turn.currentPlayerId = id;
     await this.events.emit('turn:player-changed', { player, previousPlayerId });
-    await this.logEvent(`Current player: ${player.name}.`, 'turn');
+    if (player) await this.logEvent(`Current player: ${player.name}.`, 'turn');
     return player;
   }
 
@@ -125,33 +144,34 @@ export class Game extends Stats {
 
   async beginTurn() {
     if (this.status !== 'playing') throw new Error('Game is not playing');
-    this.turn.number += 1;
-    await this.changePhase('start');
     const player = this.getCurrentPlayer();
+    if (!player || !player.active) throw new Error('A turn needs an active current player');
+    this.turn.number += 1;
+    await this.changePhase(this.turn.phases[0]);
     await this.events.emit('turn:started', { number: this.turn.number, player });
     await this.logEvent(`Turn ${this.turn.number}: ${player.name}.`, 'turn');
-    await this.changePhase('roll');
+    if (this.turn.phases[1]) await this.changePhase(this.turn.phases[1]);
   }
 
   async endTurn() {
     if (this.status !== 'playing') throw new Error('Game is not playing');
     const player = this.getCurrentPlayer();
-    await this.changePhase('end');
+    if (!player) throw new Error('A turn needs a current player');
+    await this.changePhase(this.turn.phases.at(-1));
     await this.events.emit('turn:ended', { number: this.turn.number, player });
     await this.logEvent(`${player.name} ended their turn.`, 'turn');
-    const currentIndex = this.players.indexOf(player);
-    for (let offset = 1; offset <= this.players.length; offset += 1) {
-      const next = this.players[(currentIndex + offset) % this.players.length];
-      if (next.active) {
-        await this.changeCurrentPlayer(next.id);
-        await this.beginTurn();
-        return;
-      }
+    const next = this.getNextActivePlayer(this.players.indexOf(player));
+    if (next) {
+      await this.changeCurrentPlayer(next.id);
+      await this.beginTurn();
+      return;
     }
+    await this.changeCurrentPlayer(null);
     await this.finishGame();
   }
 
   async rollDice(dice = this.dice) {
+    if (!dice) throw new Error('No dice are configured');
     const player = this.getCurrentPlayer();
     const result = dice.roll();
     this.lastRoll = { ...result, diceId: dice.id, playerId: player?.id ?? null };

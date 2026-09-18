@@ -35,6 +35,7 @@ export class EventBus {
   async emit(type, detail = {}) {
     // Copy the list so subscriptions made during dispatch start with the next event.
     for (const entry of [...(this.listeners.get(type) ?? [])]) {
+      if (!(this.listeners.get(type) ?? []).includes(entry)) continue;
       if (entry.once) this.removeEntry(type, entry);
       await entry.handler(detail);
     }

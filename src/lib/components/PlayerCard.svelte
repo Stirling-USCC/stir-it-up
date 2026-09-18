@@ -5,8 +5,8 @@
 
 <div class="accordion-body small">
   <div class="d-flex flex-wrap gap-3 mb-3">
-    <div><span class="text-body-secondary">Position</span> <strong>{player.position + 1}</strong> <span class="text-body-secondary">({game.board.getSquare(player.position)?.name})</span></div>
-    <div><span class="text-body-secondary">State</span> <strong>{player.active ? 'Active' : 'Eliminated'}</strong></div>
+    <div><span class="text-body-secondary">Position</span> <strong>{player.position + 1}</strong> {#if game.board.squares.length > 0}<span class="text-body-secondary">({game.board.getSquare(player.position)?.name})</span>{/if}</div>
+    <div><span class="text-body-secondary">State</span> <strong>{player.active ? 'Active' : 'Inactive'}</strong></div>
   </div>
   <div class="mb-3"><h4 class="h6 mb-1">Stats</h4><StatsList object={player} /></div>
   <div class="mb-2">
