@@ -3,8 +3,7 @@
   import GameLog from './GameLog.svelte';
   import StatsList from './StatsList.svelte';
 
-  let { game, selectedPlayerId } = $props();
-  let activeTab = $state('inventory');
+  let { game, selectedPlayerId, activeTab, onselecttab } = $props();
   let selectedPlayer = $derived(game.players.find((player) => player.id === selectedPlayerId));
   const tabs = [
     { id: 'inventory', label: 'Inventory' },
@@ -20,7 +19,7 @@
     else if (event.key === 'End') nextIndex = tabs.length - 1;
     else return;
     event.preventDefault();
-    activeTab = tabs[nextIndex].id;
+    onselecttab(tabs[nextIndex].id);
     event.currentTarget.parentElement.querySelectorAll('[role="tab"]')[nextIndex]?.focus();
   }
 </script>
@@ -33,7 +32,7 @@
         class:active={activeTab === tab.id} class="nav-link"
         aria-selected={activeTab === tab.id} aria-controls={`detail-panel-${tab.id}`}
         tabindex={activeTab === tab.id ? 0 : -1}
-        onclick={() => activeTab = tab.id} onkeydown={(event) => onTabKeydown(event, index)}>{tab.label}</button>
+        onclick={() => onselecttab(tab.id)} onkeydown={(event) => onTabKeydown(event, index)}>{tab.label}</button>
     {/each}
   </div>
   <div class="detail-panel border border-top-0 rounded-bottom p-3">

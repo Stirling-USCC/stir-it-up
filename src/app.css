@@ -72,6 +72,8 @@ body { background: #f5f2eb; }
 .inventory-item { background: #fff; }
 .log-list { max-height: 22rem; overflow-y: auto; }
 .player-details { padding: 0.65rem 0.75rem; }
+.inventory-summary { text-decoration: none; }
+.inventory-summary:hover, .inventory-summary:focus-visible { text-decoration: underline; }
 .player-heading { gap: 0.1rem; font-size: 0.9rem; }
 .player-heading::after { margin-left: 0.3rem; }
 .effect-pill { background: #f0e7cf; font-weight: 500; cursor: help; }

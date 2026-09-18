@@ -1,6 +1,6 @@
 <script>
   import PlayerCard from './PlayerCard.svelte';
-  let { game, selectedPlayerId, onselect } = $props();
+  let { game, selectedPlayerId, onselect, oninventory } = $props();
 </script>
 
 {#if game.players.length > 0}
@@ -22,7 +22,7 @@
           </button>
         </h3>
         <div id={`player-panel-${player.id}`} class:show={expanded} class="accordion-collapse collapse" role="region" aria-label={`${player.name} details`}>
-          <PlayerCard {player} />
+          <PlayerCard {player} {oninventory} />
         </div>
       </div>
     {/each}

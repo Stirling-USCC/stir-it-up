@@ -41,13 +41,13 @@ describe('compact player details and tabs', () => {
   });
 
   it('renders the selected player’s inventory in the lower panel', () => {
-    const html = render(DetailTabs, { props: { game, selectedPlayerId: player.id } }).body;
+    const html = render(DetailTabs, { props: { game, selectedPlayerId: player.id, activeTab: 'inventory', onselecttab: () => {} } }).body;
     expect(html).toContain("Recursive Potato's Inventory");
     expect(html).toContain('Silver Spoon');
     expect(html).toContain('polish');
     expect(html).toContain('Decks');
     expect(html).toContain('Event Log');
-    expect(render(DetailTabs, { props: { game, selectedPlayerId: null } }).body)
+    expect(render(DetailTabs, { props: { game, selectedPlayerId: null, activeTab: 'inventory', onselecttab: () => {} } }).body)
       .toContain('Select a player to view their inventory.');
   });
 });

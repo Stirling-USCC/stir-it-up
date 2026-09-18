@@ -1,7 +1,7 @@
 <script>
   import { tooltip } from './tooltip.js';
 
-  let { player } = $props();
+  let { player, oninventory } = $props();
 
   function display(value) {
     if (value === null) return 'null';
@@ -42,6 +42,8 @@
     </dl>
   {/if}
   {#if player.inventory.length > 0}
-    <p class="small text-body-secondary mb-0">Inventory <span class="badge text-bg-light border">{player.inventory.length}</span></p>
+    <button type="button" class="inventory-summary btn btn-link btn-sm text-body-secondary p-0" onclick={oninventory}>
+      Inventory <span class="badge text-bg-light border">{player.inventory.length}</span>
+    </button>
   {/if}
 </div>
