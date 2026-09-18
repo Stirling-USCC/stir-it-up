@@ -1,0 +1,6 @@
+body { background: #f7f8fa; }
+.board-square { min-height: 8.5rem; }
+.board-square .card-body { min-width: 0; }
+.piece-badge { white-space: normal; text-align: left; }
+.log-list { max-height: 14rem; overflow-y: auto; }
+.toast-region { position: fixed; z-index: 1080; right: 1rem; bottom: 1rem; width: min(22rem, calc(100vw - 2rem)); }
