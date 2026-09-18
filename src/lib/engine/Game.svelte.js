@@ -215,7 +215,10 @@ export class Game extends Stats {
     const roll = new DiceRoll(results, player?.id ?? null);
     this.lastRoll = roll;
     await this.events.emit('dice:rolled', { dice, player, roll, result: roll });
-    await this.logEvent(`${player?.name ?? 'Someone'} rolled ${results.map(({ die, value }) => `${die.name}: ${value}`).join(', ')}.`, 'dice', { values: results.map(({ die, value }) => ({ dieId: die.id, value })) });
+    const rolledValues = results.length === 1
+      ? String(results[0].value)
+      : results.map(({ die, value }) => `${die.name} ${value}`).join(' · ');
+    await this.logEvent(`${player?.name ?? 'Someone'} rolled ${rolledValues}.`, 'dice', { values: results.map(({ die, value }) => ({ dieId: die.id, value })) });
     return roll;
   }
 

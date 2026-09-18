@@ -10,11 +10,9 @@
 </script>
 
 {#if visibleDecks.length > 0}
-<section class="card" aria-labelledby="decks-heading">
-  <div class="card-body py-3">
-    <h2 id="decks-heading" class="h6 mb-2">Decks</h2>
+<div class="deck-grid">
     {#each visibleDecks as deck (deck.id)}
-      <details class="border rounded p-2 small mb-1">
+      <details class="border rounded p-2 small">
         <summary>{deck.name}</summary>
         {#if deck.cards.length > 0 || deck.drawPile.length > 0 || deck.discardPile.length > 0}
           <dl class="row g-1 mt-2 mb-2">
@@ -43,5 +41,6 @@
       </details>
     {/each}
   </div>
-</section>
+{:else}
+  <p class="small text-body-secondary mb-0">No decks</p>
 {/if}

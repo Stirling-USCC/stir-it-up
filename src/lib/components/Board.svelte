@@ -44,7 +44,7 @@
 {#if game.board.squares.length > 0}
   <section aria-labelledby="board-heading" class="board-section">
     <div class="d-flex justify-content-between align-items-baseline mb-2">
-      <h2 id="board-heading" class="h5 mb-0">Board</h2>
+      <h2 id="board-heading" class="visually-hidden">Board</h2>
       <span class="small text-body-secondary">Arrow keys to explore · Home / End</span>
     </div>
     <div class="board-surface" role="group" aria-label="Board squares" bind:this={boardElement}

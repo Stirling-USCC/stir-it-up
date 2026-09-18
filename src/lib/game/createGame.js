@@ -20,7 +20,7 @@ export function createGame() {
   // These actions demonstrate the engine. Replace them when actual rules are designed.
   const actions = [
     new Action({
-      id: 'roll', label: 'Roll dice', icon: 'bi-dice-6',
+      id: 'roll', label: 'Roll', icon: 'bi-dice-6', variant: 'primary', emphasis: 'primary',
       available: (game, player) => game.status === 'playing' && !!player && game.turn.phase === 'roll',
       perform: async (game) => {
         await game.rollDice();
@@ -28,7 +28,7 @@ export function createGame() {
       }
     }),
     new Action({
-      id: 'move', label: 'Move by roll', icon: 'bi-arrow-right-circle',
+      id: 'move', label: 'Move', icon: 'bi-arrow-right-circle', variant: 'primary', emphasis: 'primary',
       available: (game, player) => game.status === 'playing' && !!player && game.turn.phase === 'move' && game.lastRoll?.playerId === player.id,
       perform: async (game, player) => {
         await player.move(game.lastRoll.total);
@@ -36,7 +36,7 @@ export function createGame() {
       }
     }),
     new Action({
-      id: 'end-turn', label: 'End turn', icon: 'bi-skip-end-fill',
+      id: 'end-turn', label: 'End turn', icon: 'bi-skip-end-fill', variant: 'secondary',
       available: (game, player) => game.status === 'playing' && !!player && game.turn.phase === 'action',
       perform: (game) => game.endTurn()
     })

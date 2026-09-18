@@ -1,4 +1,5 @@
 body { background: #f5f2eb; }
+.game-status { padding: 0.35rem 0.65rem; border-left: 3px solid #81745d; }
 .board-section { background: #fffdf8; padding: 0.8rem; border: 1px solid #d9d1c1; border-radius: 0.8rem; box-shadow: 0 4px 18px #2c241412; }
 .board-surface {
   display: grid;
@@ -62,5 +63,21 @@ body { background: #f5f2eb; }
 }
 .die-value { font-size: 1.7rem; font-weight: 700; line-height: 1; }
 .die-sides { position: absolute; bottom: 0.2rem; right: 0.35rem; font-size: 0.65rem; color: #5c5346; }
-.log-list { max-height: 14rem; overflow-y: auto; }
+.detail-area { color: #302c24; }
+.detail-area .nav-link { color: #504a40; }
+.detail-area .nav-link.active { background: #fffdf8; color: #302c24; font-weight: 600; }
+.detail-panel { background: #fffdf8; min-height: 5rem; }
+.detail-panel [hidden] { display: none; }
+.inventory-grid, .deck-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 0.5rem; align-items: start; }
+.inventory-item { background: #fff; }
+.log-list { max-height: 22rem; overflow-y: auto; }
+.player-details { padding: 0.65rem 0.75rem; }
+.player-heading { gap: 0.1rem; font-size: 0.9rem; }
+.player-heading::after { margin-left: 0.3rem; }
+.effect-pill { background: #f0e7cf; font-weight: 500; cursor: help; }
+.effect-pill:focus-visible { outline: 3px solid #064bb2; outline-offset: 2px; }
+.compact-stats { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; }
+.stat-pair { display: inline-flex; align-items: baseline; gap: 0.25rem; min-width: 0; }
+.stat-pair dt { color: #625e55; font-weight: 400; }
+.stat-pair dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
 .toast-region { position: fixed; z-index: 1080; right: 1rem; bottom: 1rem; width: min(22rem, calc(100vw - 2rem)); }

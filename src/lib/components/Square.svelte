@@ -12,8 +12,9 @@
     return String(value);
   }
   let statSummary = $derived(Object.entries(square.stats).map(([name, value]) => `${name}: ${displayStat(value)}`).join('; '));
-  let information = $derived(`${square.name === `Square ${square.position + 1}` ? square.name : `Square ${square.position + 1}: ${square.name}`}${square.description ? `. ${square.description}` : ''}${statSummary ? `. ${statSummary}` : ''}`);
-  let accessibleName = $derived(`${information}${orderedPlayers.length ? `. Occupied by ${orderedPlayers.map((player) => `Player ${player.number}, ${player.name}${player.id === currentPlayerId ? ', current player' : ''}`).join('; ')}` : ''}`);
+  let description = $derived(square.description?.trim().replace(/\.+$/, '') ?? '');
+  let information = $derived(`${square.position + 1}${square.name === `Square ${square.position + 1}` ? '' : `: ${square.name}`}${description ? ` · ${description}` : ''}${statSummary ? ` · ${statSummary}` : ''}`);
+  let accessibleName = $derived(`Square ${square.position + 1}${square.name === `Square ${square.position + 1}` ? '' : `, ${square.name}`}${description ? `. ${description}` : ''}${statSummary ? `. ${statSummary}` : ''}${orderedPlayers.length ? `. Occupied by ${orderedPlayers.map((player) => `Player ${player.number}, ${player.name}${player.id === currentPlayerId ? ', current player' : ''}`).join('; ')}` : ''}`);
 </script>
 
 <button type="button" class={`board-cell ${square.className}`} data-square-id={square.id}
