@@ -1,21 +1,40 @@
 import { Stats } from './Stats.svelte.js';
 import { EventBus } from './EventBus.js';
 import { Turn } from './Turn.svelte.js';
+import { Player } from './Player.svelte.js';
+import { DiceRoll } from './DiceRoll.js';
+import { randomPlayerName } from '../game/playerNames.js';
+
+const playerColours = ['#3467b1', '#ad3434', '#276b4d', '#854490', '#92521e', '#17677a', '#934163', '#555a98'];
 
 export class Game extends Stats {
   players = $state([]);
   decks = $state([]);
   rules = $state([]);
   actions = $state([]);
+  dice = $state([]);
   status = $state('waiting');
   log = $state([]);
   lastRoll = $state(null);
 
-  constructor({ board, players = [], decks = [], dice, rules = [], actions = [], stats = {}, phases } = {}) {
+  constructor({ board, players = [], decks = [], dice = [], rules = [], actions = [], stats = {}, phases } = {}) {
     super(stats);
+    if (players.length > 8) throw new Error('A game supports at most 8 players');
+    const usedNumbers = new Set();
+    const usedIds = new Set();
+    for (const player of players) {
+      player.number ??= Array.from({ length: 8 }, (_, index) => index + 1).find((number) => !usedNumbers.has(number));
+      if (!Number.isInteger(player.number) || player.number < 1 || player.number > 8 || usedNumbers.has(player.number)) {
+        throw new Error('Player number must be unique and between 1 and 8');
+      }
+      if (!player.id || usedIds.has(player.id)) throw new Error('Player ID must be present and unique');
+      player.colour ??= playerColours[player.number - 1];
+      usedNumbers.add(player.number);
+      usedIds.add(player.id);
+    }
     this.board = board;
     this.board.game = this;
-    this.dice = dice;
+    this.dice = [...dice];
     this.game = this;
     this.events = new EventBus();
     this.turn = new Turn(phases);
@@ -24,7 +43,7 @@ export class Game extends Stats {
     this.rules = [...rules];
     this.actions = [...actions];
     for (const square of this.board.squares) this.attach(square);
-    if (this.dice) this.attach(this.dice);
+    for (const die of this.dice) this.attach(die);
     for (const player of this.players) this.attach(player);
     for (const deck of this.decks) this.attach(deck);
     for (const rule of this.rules) this.attach(rule);
@@ -60,6 +79,24 @@ export class Game extends Stats {
     return this.actions.filter((action) => action.available(this, player));
   }
 
+  async addDie(die) {
+    if (this.dice.some((existing) => existing.id === die.id)) throw new Error(`Die ID already exists: ${die.id}`);
+    this.attach(die);
+    this.dice.push(die);
+    await this.events.emit('die:added', { die });
+    return die;
+  }
+
+  async removeDie(dieOrId) {
+    const id = typeof dieOrId === 'string' ? dieOrId : dieOrId.id;
+    const index = this.dice.findIndex((die) => die.id === id);
+    if (index < 0) return null;
+    const [die] = this.dice.splice(index, 1);
+    die.game = null;
+    await this.events.emit('die:removed', { die });
+    return die;
+  }
+
   async logEvent(message, category = 'system', metadata = {}) {
     const sequence = this.log.length + 1;
     const entry = { id: `log-${sequence}`, sequence, timestamp: new Date().toISOString(), message, category, metadata };
@@ -69,6 +106,15 @@ export class Game extends Stats {
   }
 
   async addPlayer(player) {
+    if (this.status !== 'waiting') throw new Error('The roster is locked after the game starts');
+    if (this.players.length >= 8) throw new Error('A game supports at most 8 players');
+    const number = Array.from({ length: 8 }, (_, index) => index + 1).find((candidate) => !this.players.some((existing) => existing.number === candidate));
+    player ??= new Player({ id: crypto.randomUUID(), number, name: randomPlayerName(), colour: playerColours[number - 1] });
+    if (player.number == null) player.number = number;
+    if (!Number.isInteger(player.number) || player.number < 1 || player.number > 8 || this.players.some((existing) => existing.number === player.number)) {
+      throw new Error('Player number must be unique and between 1 and 8');
+    }
+    player.colour ??= playerColours[player.number - 1];
     if (this.getPlayerById(player.id)) throw new Error(`Player ID already exists: ${player.id}`);
     player.position = this.board.squares.length ? this.board.resolvePosition(player.position) : 0;
     this.attach(player);
@@ -79,26 +125,16 @@ export class Game extends Stats {
   }
 
   async removePlayer(playerOrId) {
+    if (this.status !== 'waiting') throw new Error('The roster is locked after the game starts');
     const id = typeof playerOrId === 'string' ? playerOrId : playerOrId.id;
     const index = this.players.findIndex((player) => player.id === id);
     if (index < 0) return null;
-    const wasCurrent = this.turn.currentPlayerId === id;
-    if (wasCurrent && this.status === 'playing') {
-      await this.changePhase(this.turn.phases.at(-1));
-      await this.events.emit('turn:ended', { number: this.turn.number, player: this.players[index] });
-    }
     const [player] = this.players.splice(index, 1);
     player.game = null;
     for (const item of player.inventory) item.game = null;
     for (const effect of player.effects) effect.game = null;
     await this.events.emit('player:removed', { player });
     await this.logEvent(`${player.name} left the game.`, 'player');
-    if (wasCurrent) {
-      const next = this.getNextActivePlayer(index - 1);
-      await this.changeCurrentPlayer(next?.id ?? null);
-      if (next && this.status === 'playing') await this.beginTurn();
-      if (!next && this.status === 'playing') await this.finishGame();
-    }
     return player;
   }
 
@@ -171,13 +207,16 @@ export class Game extends Stats {
   }
 
   async rollDice(dice = this.dice) {
-    if (!dice) throw new Error('No dice are configured');
+    if (!Array.isArray(dice)) dice = [dice];
+    if (dice.length === 0) throw new Error('No dice are configured');
     const player = this.getCurrentPlayer();
-    const result = dice.roll();
-    this.lastRoll = { ...result, diceId: dice.id, playerId: player?.id ?? null };
-    await this.events.emit('dice:rolled', { dice, player, result });
-    await this.logEvent(`${player?.name ?? 'Someone'} rolled ${result.total} (${result.rolls.join(' + ')}${result.modifier ? ` ${result.modifier < 0 ? '-' : '+'} ${Math.abs(result.modifier)}` : ''}).`, 'dice', result);
-    return result;
+    const results = [];
+    for (const die of dice) results.push({ die, value: await die.roll({ game: this, player }) });
+    const roll = new DiceRoll(results, player?.id ?? null);
+    this.lastRoll = roll;
+    await this.events.emit('dice:rolled', { dice, player, roll, result: roll });
+    await this.logEvent(`${player?.name ?? 'Someone'} rolled ${results.map(({ die, value }) => `${die.name}: ${value}`).join(', ')}.`, 'dice', { values: results.map(({ die, value }) => ({ dieId: die.id, value })) });
+    return roll;
   }
 
   async drawCard(deckOrId, player = this.getCurrentPlayer()) {

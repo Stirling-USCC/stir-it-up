@@ -1,18 +1,29 @@
 import { Stats } from './Stats.svelte.js';
 
 export class Player extends Stats {
+  name = $state('');
+  colour = $state(null);
   position = $state(0);
   active = $state(true);
   inventory = $state([]);
   effects = $state([]);
   statEventType = 'player:stat-changed';
 
-  constructor({ id, name, position = 0, active = true, icon = '●', className = '', stats = {}, inventory = [], effects = [] }) {
+  constructor({ id, number = null, name, colour = null, position = 0, active = true, icon = '●', className = '', stats = {}, inventory = [], effects = [] }) {
     super(stats);
-    Object.assign(this, { id, name, position, active, icon, className });
+    Object.assign(this, { id, number, name, colour, position, active, icon, className });
     this.inventory = [...inventory];
     this.effects = [...effects];
     this.game = null;
+  }
+
+  async rename(name) {
+    if (this.game?.status !== 'waiting') throw new Error('Player names can only be changed before the game starts');
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error('Player name cannot be empty');
+    const previous = this.name;
+    this.name = trimmed;
+    await this.game?.events.emit('player:renamed', { player: this, previous, name: trimmed });
   }
 
   async move(amount) {

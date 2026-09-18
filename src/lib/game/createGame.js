@@ -1,27 +1,24 @@
 import { Action } from '../engine/Action.js';
 import { Board } from '../engine/Board.svelte.js';
 import { Deck } from '../engine/Deck.svelte.js';
-import { Dice } from '../engine/Dice.svelte.js';
+import { Die } from '../engine/Die.svelte.js';
 import { Game } from '../engine/Game.svelte.js';
-import { Player } from '../engine/Player.svelte.js';
 import { Square } from '../engine/Square.svelte.js';
 
 // Placeholder content lives here. Engine classes never know this demo's square count or turn actions.
 export function createGame() {
-  const squares = Array.from({ length: 16 }, (_, position) => new Square({
+  const squares = Array.from({ length: 100 }, (_, position) => new Square({
     id: `square-${position + 1}`,
     name: `Square ${position + 1}`,
     position,
-    icon: '·'
+    coordinates: {
+      x: Math.floor(position / 10) % 2 === 0 ? position % 10 : 9 - position % 10,
+      y: 9 - Math.floor(position / 10)
+    }
   }));
 
   // These actions demonstrate the engine. Replace them when actual rules are designed.
   const actions = [
-    new Action({
-      id: 'start', label: 'Start game', icon: 'bi-play-fill',
-      available: (game) => game.status === 'waiting',
-      perform: (game) => game.startGame()
-    }),
     new Action({
       id: 'roll', label: 'Roll dice', icon: 'bi-dice-6',
       available: (game, player) => game.status === 'playing' && !!player && game.turn.phase === 'roll',
@@ -47,12 +44,8 @@ export function createGame() {
 
   return new Game({
     board: new Board(squares),
-    players: [
-      new Player({ id: 'player-1', name: 'Player One', icon: '●', className: 'bg-primary' }),
-      new Player({ id: 'player-2', name: 'Player Two', icon: '◆', className: 'bg-success' })
-    ],
     decks: [new Deck({ id: 'deck-1', name: 'Deck 1' })],
-    dice: new Dice({ id: 'demo-d6', name: 'One six-sided die' }),
+    dice: [new Die({ id: 'demo-d6', name: 'Movement die', sides: 6, colour: '#fdf1da' })],
     actions
   });
 }

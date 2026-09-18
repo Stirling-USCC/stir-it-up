@@ -19,8 +19,8 @@
       <div class="accordion-item">
         <h3 class="accordion-header">
           <button type="button" class:collapsed={!expanded} class="accordion-button py-2" aria-expanded={expanded} aria-controls={`player-panel-${player.id}`} onclick={() => openPlayerId = expanded ? null : player.id}>
-            <span class={`badge me-2 ${player.className || 'text-bg-secondary'}`} aria-hidden="true">{player.icon}</span>
-            <span>{player.name}</span>
+            <span class="roster-token me-2" style={`--token-colour:${player.colour}`} aria-hidden="true">{player.number}</span>
+            <span>Player {player.number}: {player.name}</span>
             {#if game.turn.currentPlayerId === player.id}<span class="badge text-bg-primary ms-2">Current</span>{/if}
             <span class="small text-body-secondary ms-auto me-2">#{player.position + 1}</span>
           </button>
