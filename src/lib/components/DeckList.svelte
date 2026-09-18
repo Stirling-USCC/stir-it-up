@@ -3,6 +3,7 @@
   let { game } = $props();
 </script>
 
+{#if game.decks.length > 0}
 <section class="card" aria-labelledby="decks-heading">
   <div class="card-body py-3">
     <h2 id="decks-heading" class="h6 mb-2">Decks</h2>
@@ -18,8 +19,7 @@
           </div>
         {/if}
       </details>
-    {:else}
-      <span class="text-body-secondary small">No decks in this session.</span>
     {/each}
   </div>
 </section>
+{/if}

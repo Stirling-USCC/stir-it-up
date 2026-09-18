@@ -3,7 +3,13 @@
 
   function display(value) {
     if (value === null) return 'null';
-    if (typeof value === 'object') return JSON.stringify(value);
+    if (typeof value === 'object') {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
+    }
     return String(value);
   }
 </script>

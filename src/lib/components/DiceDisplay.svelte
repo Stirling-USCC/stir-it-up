@@ -2,6 +2,7 @@
   let { game } = $props();
 </script>
 
+{#if game.dice}
 <section class="card" aria-labelledby="dice-heading">
   <div class="card-body py-3">
     <h2 id="dice-heading" class="h6 text-body-secondary mb-1">Latest roll</h2>
@@ -12,3 +13,4 @@
     {/if}
   </div>
 </section>
+{/if}
