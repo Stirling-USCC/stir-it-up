@@ -12,12 +12,14 @@
     <h3 class="h6 mb-1 text-truncate" title={square.name}>{square.name}</h3>
     {#if square.description}<p class="small text-body-secondary mb-2">{square.description}</p>{/if}
     {#if Object.keys(square.stats).length > 0}<div class="mb-2"><StatsList object={square} /></div>{/if}
-    <div class="mt-auto d-flex flex-wrap gap-1">
-      {#each players as player (player.id)}
-        <span class={`badge piece-badge ${player.className || 'text-bg-secondary'}`} title={`${player.name}${player.id === currentPlayerId ? ', current player' : ''}`}>
-          <span aria-hidden="true">{player.icon}</span> {player.name}{player.id === currentPlayerId ? ' · current' : ''}
-        </span>
-      {/each}
-    </div>
+    {#if players.length > 0}
+      <div class="mt-auto d-flex flex-wrap gap-1">
+        {#each players as player (player.id)}
+          <span class={`badge piece-badge ${player.className || 'text-bg-secondary'}`} title={`${player.name}${player.id === currentPlayerId ? ', current player' : ''}`}>
+            <span aria-hidden="true">{player.icon}</span> {player.name}{player.id === currentPlayerId ? ' · current' : ''}
+          </span>
+        {/each}
+      </div>
+    {/if}
   </div>
 </article>

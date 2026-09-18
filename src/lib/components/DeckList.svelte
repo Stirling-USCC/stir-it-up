@@ -1,20 +1,42 @@
 <script>
   import StatsList from './StatsList.svelte';
   let { game } = $props();
+  let visibleDecks = $derived(game.decks.filter((deck) =>
+    deck.cards.length > 0 ||
+    deck.drawPile.length > 0 ||
+    deck.discardPile.length > 0 ||
+    Object.keys(deck.stats).length > 0
+  ));
 </script>
 
-{#if game.decks.length > 0}
+{#if visibleDecks.length > 0}
 <section class="card" aria-labelledby="decks-heading">
   <div class="card-body py-3">
     <h2 id="decks-heading" class="h6 mb-2">Decks</h2>
-    {#each game.decks as deck (deck.id)}
+    {#each visibleDecks as deck (deck.id)}
       <details class="border rounded p-2 small mb-1">
-        <summary>{deck.name} <span class="text-body-secondary">· {deck.drawPile.length} to draw, {deck.discardPile.length} discarded</span></summary>
-        <div class="mt-2"><strong>Stats</strong> <StatsList object={deck} /></div>
+        <summary>{deck.name}</summary>
+        {#if deck.cards.length > 0 || deck.drawPile.length > 0 || deck.discardPile.length > 0}
+          <dl class="row g-1 mt-2 mb-2">
+            <dt class="col-12 col-sm-7">To draw</dt><dd class="col-12 col-sm-5 mb-0">{deck.drawPile.length}</dd>
+            <dt class="col-12 col-sm-7">Discarded</dt><dd class="col-12 col-sm-5 mb-0">{deck.discardPile.length}</dd>
+          </dl>
+        {/if}
+        {#if Object.keys(deck.stats).length > 0}
+          <div class="mt-2"><h3 class="h6 mb-1">Stats</h3><StatsList object={deck} /></div>
+        {/if}
         {#if deck.cards.length > 0}
-          <div class="mt-2"><strong>Cards</strong>
+          <div class="mt-2"><h3 class="h6 mb-1">Cards</h3>
             {#each deck.cards as card (card.id)}
-              <details class="ms-2 my-1"><summary>{card.name}</summary><p class="mb-1">{card.description}</p><StatsList object={card} /></details>
+              {#if card.description || Object.keys(card.stats).length > 0}
+                <details class="ms-2 my-1">
+                  <summary>{card.name}</summary>
+                  {#if card.description}<p class="mb-1 mt-2">{card.description}</p>{/if}
+                  {#if Object.keys(card.stats).length > 0}<div class="mt-2"><StatsList object={card} /></div>{/if}
+                </details>
+              {:else}
+                <div class="ms-2 my-1">{card.name}</div>
+              {/if}
             {/each}
           </div>
         {/if}

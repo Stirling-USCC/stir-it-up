@@ -10,6 +10,7 @@
   });
 </script>
 
+{#if game.players.length > 0}
 <section aria-labelledby="players-heading">
   <h2 id="players-heading" class="h5 mb-2">Players</h2>
   <div class="accordion" id="players-accordion">
@@ -31,3 +32,4 @@
     {/each}
   </div>
 </section>
+{/if}

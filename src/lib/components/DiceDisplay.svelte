@@ -2,15 +2,13 @@
   let { game } = $props();
 </script>
 
-{#if game.dice}
-<section class="card" aria-labelledby="dice-heading">
+{#if game.lastRoll}
+<section class="card" aria-label="Dice result">
   <div class="card-body py-3">
-    <h2 id="dice-heading" class="h6 text-body-secondary mb-1">Latest roll</h2>
-    {#if game.lastRoll}
-      <div><strong class="fs-4">{game.lastRoll.total}</strong> <span class="small text-body-secondary">({game.lastRoll.rolls.join(' + ')}{game.lastRoll.modifier ? ` ${game.lastRoll.modifier < 0 ? '-' : '+'} ${Math.abs(game.lastRoll.modifier)}` : ''})</span></div>
-    {:else}
-      <span class="text-body-secondary small">No roll yet · {game.dice.count}d{game.dice.sides}</span>
-    {/if}
+    <dl class="row g-1 mb-0">
+      <dt class="col-12 col-sm-7 text-body-secondary">Latest roll</dt>
+      <dd class="col-12 col-sm-5 mb-0"><strong class="fs-4">{game.lastRoll.total}</strong> <span class="small text-body-secondary">({game.lastRoll.rolls.join(' + ')}{game.lastRoll.modifier ? ` ${game.lastRoll.modifier < 0 ? '-' : '+'} ${Math.abs(game.lastRoll.modifier)}` : ''})</span></dd>
+    </dl>
   </div>
 </section>
 {/if}

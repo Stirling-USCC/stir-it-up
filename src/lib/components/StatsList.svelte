@@ -14,12 +14,11 @@
   }
 </script>
 
-{#if Object.keys(object.stats).length === 0}
-  <span class="text-body-secondary small">None</span>
-{:else}
-  <dl class="row row-cols-1 row-cols-sm-2 g-1 mb-0 small">
+{#if Object.keys(object.stats).length > 0}
+  <dl class="row g-1 mb-0 small">
     {#each Object.entries(object.stats) as [name, value] (name)}
-      <div class="col d-flex gap-2"><dt class="fw-medium">{name}</dt><dd class="mb-0 text-break">{display(value)}</dd></div>
+      <dt class="col-12 col-sm-7 fw-medium text-break">{name}</dt>
+      <dd class="col-12 col-sm-5 mb-0 text-break">{display(value)}</dd>
     {/each}
   </dl>
 {/if}
