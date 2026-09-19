@@ -25,6 +25,12 @@ change without asking for confirmation. Never amend or rewrite an earlier visito
 
 Add real visitor content to `createGame.js`. Do not add it to `createNeutralGame.js` or only to the showcase. When a feature contains several related objects, keep them together in a plainly named module under `src/lib/game/content/` and import it from `createGame.js`. Do not introduce automatic discovery or a plugin framework. Do not edit the engine when an existing object, hook, command, stat, or rule can express the idea. Do not add a package for something that can be written clearly in a few lines.
 
+## Make new content reachable
+
+When adding a game object, make sure a player can encounter, obtain, or use it through the normal game interface. Follow any method the visitor specifies. If the route is already obvious and working, use it: cards in a rendered deck can already be drawn, actions appear automatically, squares placed on the board can be reached, and configured dice and rules become active through normal play.
+
+If an owned or conditional object has no acquisition route, add the smallest playful one as part of the same feature. For example, an otherwise unobtainable inventory item or effect can be granted by landing on or passing a related square, or by playing a related card. Choose a simple route that fits the idea and existing engine commands. Do not leave finished content stranded in source code, and do not add another acquisition mechanism when the visitor already described one.
+
 ## Engine model
 
 - Game state says what is true now.
