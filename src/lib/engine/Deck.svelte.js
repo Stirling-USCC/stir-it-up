@@ -1,4 +1,5 @@
 import { Stats } from './Stats.svelte.js';
+import { assertId, assertUniqueIds } from './ids.js';
 
 export class Deck extends Stats {
   cards = $state([]);
@@ -7,9 +8,42 @@ export class Deck extends Stats {
 
   constructor({ id, name, cards = [], stats = {} }) {
     super(stats);
+    assertUniqueIds(cards, 'card');
     Object.assign(this, { id, name });
     this.cards = [...cards];
     this.drawPile = [...cards];
+    for (const card of cards) card.deck = this;
+  }
+
+  async addCard(card) {
+    const addition = await this.game?.events.emitCancellable('card:adding', { deck: this, card }) ?? { card };
+    if (addition.cancelled) return null;
+    card = addition.card;
+    assertId(card, 'card');
+    if (this.cards.some((existing) => existing.id === card.id)) throw new Error(`Card ID already exists: ${card.id}`);
+    this.cards.push(card);
+    this.drawPile.push(card);
+    card.deck = this;
+    if (this.game) this.game.attach(card);
+    await this.game?.events.emit('card:added', { deck: this, card });
+    return card;
+  }
+
+  async removeCard(cardOrId) {
+    const id = typeof cardOrId === 'string' ? cardOrId : cardOrId.id;
+    let card = this.cards.find((candidate) => candidate.id === id);
+    if (!card) return null;
+    const removal = await this.game?.events.emitCancellable('card:removing', { deck: this, card }) ?? { card };
+    if (removal.cancelled) return null;
+    card = removal.card;
+    if (!this.cards.includes(card)) throw new Error('Card to remove is not in this deck');
+    this.cards.splice(this.cards.indexOf(card), 1);
+    if (this.drawPile.includes(card)) this.drawPile.splice(this.drawPile.indexOf(card), 1);
+    if (this.discardPile.includes(card)) this.discardPile.splice(this.discardPile.indexOf(card), 1);
+    card.deck = null;
+    card.game = null;
+    await this.game?.events.emit('card:removed', { deck: this, card });
+    return card;
   }
 
   async reset() {

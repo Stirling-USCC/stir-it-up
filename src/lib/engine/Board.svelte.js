@@ -1,7 +1,10 @@
+import { assertId, assertUniqueIds } from './ids.js';
+
 export class Board {
   squares = $state([]);
 
   constructor(squares = []) {
+    assertUniqueIds(squares, 'square');
     this.squares = [...squares];
     this.reindexSquares();
   }
@@ -15,7 +18,7 @@ export class Board {
     if (addition.cancelled) return null;
     square = addition.square;
     index = addition.index;
-    if (square?.id == null) throw new Error('A square needs an ID');
+    assertId(square, 'square');
     if (!Number.isInteger(index) || index < 0 || index > this.squares.length) {
       throw new RangeError('Square index is outside the board');
     }

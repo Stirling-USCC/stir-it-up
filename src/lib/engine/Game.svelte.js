@@ -4,6 +4,7 @@ import { Turn } from './Turn.svelte.js';
 import { Player } from './Player.svelte.js';
 import { DiceRoll } from './DiceRoll.js';
 import { randomPlayerName } from '../game/playerNames.js';
+import { assertId, assertUniqueIds } from './ids.js';
 
 const playerColours = ['#3467b1', '#ad3434', '#276b4d', '#854490', '#92521e', '#17677a', '#934163', '#555a98'];
 
@@ -20,6 +21,11 @@ export class Game extends Stats {
   constructor({ board, players = [], decks = [], dice = [], rules = [], actions = [], stats = {}, phases } = {}) {
     super(stats);
     if (players.length > 8) throw new Error('A game supports at most 8 players');
+    assertUniqueIds(players, 'player');
+    assertUniqueIds(decks, 'deck');
+    assertUniqueIds(dice, 'die');
+    assertUniqueIds(rules, 'rule');
+    assertUniqueIds(actions, 'action');
     const usedNumbers = new Set();
     const usedIds = new Set();
     for (const player of players) {
@@ -54,7 +60,10 @@ export class Game extends Stats {
     object.game = this;
     for (const item of object.inventory ?? []) item.game = this;
     for (const effect of object.effects ?? []) effect.game = this;
-    for (const card of object.cards ?? []) card.game = this;
+    for (const card of object.cards ?? []) {
+      card.game = this;
+      card.deck = object;
+    }
   }
 
   getPlayerById(id) {
@@ -63,6 +72,10 @@ export class Game extends Stats {
 
   getCurrentPlayer() {
     return this.getPlayerById(this.turn.currentPlayerId);
+  }
+
+  getDeckById(id) {
+    return this.decks.find((deck) => deck.id === id) ?? null;
   }
 
   getNextActivePlayer(afterIndex) {
@@ -83,7 +96,7 @@ export class Game extends Stats {
     const addition = await this.events.emitCancellable('die:adding', { die });
     if (addition.cancelled) return null;
     die = addition.die;
-    if (!die?.id) throw new Error('A die needs an ID');
+    assertId(die, 'die');
     if (this.dice.some((existing) => existing.id === die.id)) throw new Error(`Die ID already exists: ${die.id}`);
     this.attach(die);
     this.dice.push(die);
@@ -103,6 +116,87 @@ export class Game extends Stats {
     die.game = null;
     await this.events.emit('die:removed', { die });
     return die;
+  }
+
+  async addDeck(deck) {
+    const addition = await this.events.emitCancellable('deck:adding', { deck });
+    if (addition.cancelled) return null;
+    deck = addition.deck;
+    assertId(deck, 'deck');
+    if (this.decks.some((existing) => existing.id === deck.id)) throw new Error(`Deck ID already exists: ${deck.id}`);
+    this.attach(deck);
+    this.decks.push(deck);
+    await this.events.emit('deck:added', { deck });
+    return deck;
+  }
+
+  async removeDeck(deckOrId) {
+    const id = typeof deckOrId === 'string' ? deckOrId : deckOrId.id;
+    let deck = this.getDeckById(id);
+    if (!deck) return null;
+    const removal = await this.events.emitCancellable('deck:removing', { deck });
+    if (removal.cancelled) return null;
+    deck = removal.deck;
+    if (!this.decks.includes(deck)) throw new Error('Deck to remove is not in this game');
+    this.decks.splice(this.decks.indexOf(deck), 1);
+    deck.game = null;
+    for (const card of deck.cards) card.game = null;
+    await this.events.emit('deck:removed', { deck });
+    return deck;
+  }
+
+  async addRule(rule) {
+    const addition = await this.events.emitCancellable('rule:adding', { rule });
+    if (addition.cancelled) return null;
+    rule = addition.rule;
+    assertId(rule, 'rule');
+    if (this.rules.some((existing) => existing.id === rule.id)) throw new Error(`Rule ID already exists: ${rule.id}`);
+    this.attach(rule);
+    this.rules.push(rule);
+    if (this.status === 'playing') await rule.setup(this);
+    await this.events.emit('rule:added', { rule });
+    return rule;
+  }
+
+  async removeRule(ruleOrId) {
+    const id = typeof ruleOrId === 'string' ? ruleOrId : ruleOrId.id;
+    let rule = this.rules.find((candidate) => candidate.id === id);
+    if (!rule) return null;
+    const removal = await this.events.emitCancellable('rule:removing', { rule });
+    if (removal.cancelled) return null;
+    rule = removal.rule;
+    if (!this.rules.includes(rule)) throw new Error('Rule to remove is not in this game');
+    if (this.status === 'playing') await rule.teardown();
+    this.rules.splice(this.rules.indexOf(rule), 1);
+    rule.game = null;
+    await this.events.emit('rule:removed', { rule });
+    return rule;
+  }
+
+  async addAction(action) {
+    const addition = await this.events.emitCancellable('action:adding', { action });
+    if (addition.cancelled) return null;
+    action = addition.action;
+    assertId(action, 'action');
+    if (this.actions.some((existing) => existing.id === action.id)) throw new Error(`Action ID already exists: ${action.id}`);
+    this.attach(action);
+    this.actions.push(action);
+    await this.events.emit('action:added', { action });
+    return action;
+  }
+
+  async removeAction(actionOrId) {
+    const id = typeof actionOrId === 'string' ? actionOrId : actionOrId.id;
+    let action = this.actions.find((candidate) => candidate.id === id);
+    if (!action) return null;
+    const removal = await this.events.emitCancellable('action:removing', { action });
+    if (removal.cancelled) return null;
+    action = removal.action;
+    if (!this.actions.includes(action)) throw new Error('Action to remove is not in this game');
+    this.actions.splice(this.actions.indexOf(action), 1);
+    action.game = null;
+    await this.events.emit('action:removed', { action });
+    return action;
   }
 
   async logEvent(message, category = 'system', metadata = {}) {

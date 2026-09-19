@@ -8,6 +8,8 @@ import { Game } from '../src/lib/engine/Game.svelte.js';
 import { Board } from '../src/lib/engine/Board.svelte.js';
 import { InventoryItem } from '../src/lib/engine/InventoryItem.js';
 import { Effect } from '../src/lib/engine/Effect.js';
+import { Action } from '../src/lib/engine/Action.js';
+import { Rule } from '../src/lib/engine/Rule.js';
 import { createNeutralGame as createGame } from '../src/lib/game/createNeutralGame.js';
 import { Die } from '../src/lib/engine/Die.svelte.js';
 import { findSquareInDirection } from '../src/lib/components/boardNavigation.js';
@@ -128,6 +130,36 @@ describe('cancellable command events', () => {
 });
 
 describe('generic engine objects', () => {
+  it('adds and removes extensible collections through game commands', async () => {
+    const game = createGame();
+    const card = new Card({ id: 'runtime-card', name: 'Runtime Card' });
+    const deck = new Deck({ id: 'runtime-deck', name: 'Runtime Deck' });
+    const rule = new Rule({ id: 'runtime-rule', name: 'Runtime Rule' });
+    const action = new Action({ id: 'runtime-action', label: 'Runtime Action', perform: () => {} });
+
+    await game.addDeck(deck);
+    await deck.addCard(card);
+    await game.addRule(rule);
+    await game.addAction(action);
+    expect([deck.game, card.game, rule.game, action.game]).toEqual([game, game, game, game]);
+    expect(deck.drawPile).toEqual([card]);
+
+    await expect(game.addDeck(new Deck({ id: 'runtime-deck', name: 'Duplicate' }))).rejects.toThrow('already exists');
+    await expect(deck.addCard(new Card({ id: 'runtime-card', name: 'Duplicate' }))).rejects.toThrow('already exists');
+
+    expect(await deck.removeCard(card)).toBe(card);
+    expect(await game.removeAction(action)).toBe(action);
+    expect(await game.removeRule(rule)).toBe(rule);
+    expect(await game.removeDeck(deck)).toBe(deck);
+  });
+
+  it('rejects duplicate IDs in initial collections', () => {
+    const duplicateCards = [new Card({ id: 'same', name: 'One' }), new Card({ id: 'same', name: 'Two' })];
+    expect(() => new Deck({ id: 'deck', name: 'Deck', cards: duplicateCards })).toThrow('Card ID already exists');
+    const duplicateSquares = [new Square({ id: 'same', name: 'One' }), new Square({ id: 'same', name: 'Two' })];
+    expect(() => new Board(duplicateSquares)).toThrow('Square ID already exists');
+  });
+
   it('changes arbitrary stats on players and squares and emits events', async () => {
     const game = createGame();
     const player = await game.addPlayer();

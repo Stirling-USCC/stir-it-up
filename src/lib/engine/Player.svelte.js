@@ -1,4 +1,5 @@
 import { Stats } from './Stats.svelte.js';
+import { assertUniqueIds } from './ids.js';
 
 export class Player extends Stats {
   name = $state('');
@@ -11,6 +12,8 @@ export class Player extends Stats {
 
   constructor({ id, number = null, name, colour = null, position = 0, active = true, icon = '●', className = '', stats = {}, inventory = [], effects = [] }) {
     super(stats);
+    assertUniqueIds(inventory, 'item');
+    assertUniqueIds(effects, 'effect');
     Object.assign(this, { id, number, name, colour, position, active, icon, className });
     this.inventory = [...inventory];
     this.effects = [...effects];
