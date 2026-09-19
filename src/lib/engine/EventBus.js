@@ -52,6 +52,7 @@ export class EventBus {
       }
     };
     await this.emit(type, event);
+    if (event.cancelled) await this.emit('command:cancelled', { type, reason: event.reason, event });
     return event;
   }
 }

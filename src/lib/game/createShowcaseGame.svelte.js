@@ -164,7 +164,6 @@ export function createShowcaseGame() {
       'player:moving': async (game, movement) => {
         if (movement.player.effects.some((effect) => effect.id === 'rooted')) {
           movement.cancel('Rooted players cannot walk.');
-          await game.logEvent(`${movement.player.name}'s movement was cancelled by Rooted.`, 'rule');
           return;
         }
         if (movement.player.inventory.some((item) => item.id === 'spring-boots')) {

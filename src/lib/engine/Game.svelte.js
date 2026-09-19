@@ -43,6 +43,11 @@ export class Game extends Stats {
     this.dice = [...dice];
     this.game = this;
     this.events = new EventBus();
+    this.events.on('command:cancelled', ({ type, reason }) => this.logEvent(
+      reason || `${type} was cancelled.`,
+      'cancelled',
+      { command: type }
+    ));
     this.turn = new Turn(phases);
     this.players = [...players];
     this.decks = [...decks];

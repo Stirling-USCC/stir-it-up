@@ -87,6 +87,7 @@ describe('cancellable command events', () => {
     expect(await player.move(4)).toBe(5);
     expect(player.position).toBe(5);
     expect(completed).toHaveLength(1);
+    expect(game.log.some((entry) => entry.message === 'Movement blocked' && entry.category === 'cancelled')).toBe(true);
   });
 
   it('validates modified command values and reports only completed changes', async () => {

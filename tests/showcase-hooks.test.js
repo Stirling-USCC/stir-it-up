@@ -120,6 +120,6 @@ describe('interactive showcase hooks', () => {
     await perform(game, 'showcase-toggle-rooted');
     await perform(game, 'showcase-walk-six');
     expect(player.position).toBe(8);
-    expect(game.log.some((entry) => entry.message.includes('movement was cancelled by Rooted'))).toBe(true);
+    expect(game.log.some((entry) => entry.message === 'Rooted players cannot walk.')).toBe(true);
   });
 });
