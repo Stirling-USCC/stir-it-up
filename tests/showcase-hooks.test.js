@@ -11,7 +11,7 @@ async function startedShowcase() {
 async function perform(game, id) {
   const action = game.actions.find((candidate) => candidate.id === id);
   expect(action.available(game, game.getCurrentPlayer())).toBe(true);
-  await action.perform(game, game.getCurrentPlayer());
+  await action.run(game, game.getCurrentPlayer());
 }
 
 describe('interactive showcase hooks', () => {

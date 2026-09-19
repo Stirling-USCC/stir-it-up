@@ -10,7 +10,7 @@
     busy = true;
     error = '';
     try {
-      await action.perform(game, game.getCurrentPlayer());
+      await action.run(game, game.getCurrentPlayer());
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause);
     } finally {

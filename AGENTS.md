@@ -67,7 +67,7 @@ All IDs should be stable strings and unique within their collection.
 | `DiceRoll` | created by `game.rollDice()` | preserves `{ die, value }` results; has `total`, `min`, and `max` helpers |
 | `Card` | `id`, `name` | `description`, `image`, `icon`, `className`, `stats`; async `onDraw`, `onPlay`, `onDiscard` hooks |
 | `Deck` | `id`, `name` | `cards`, `stats`; `addCard`, `removeCard`, `draw`, `discard`, `reset`, `shuffle` commands |
-| `Action` | `id`, `label`, `perform` | `description`, `available`, `variant`, `icon`, `emphasis`, `stats` |
+| `Action` | `id`, `label`, `perform` | `description`, `available`, `variant`, `icon`, `emphasis`, `stats`; call `run(game, player)` to execute it |
 | `InventoryItem` | `id`, `name` | `description`, `metadata`, `stats`, event `handlers`; optional async `onAdd` and `onRemove` hooks |
 | `Effect` | `id`, `name` | `description`, `duration`, `metadata`, `stats`, event `handlers`; optional async `onAdd` and `onRemove` hooks |
 | `Rule` | `id`, `name` | `description`, `stats`, map of event `handlers` |
@@ -183,7 +183,7 @@ const shoutAction = new Action({
 });
 ```
 
-Actions render automatically. Keep Bootstrap class construction in the UI: use a variant name such as `primary`, `warning`, or `danger`, not a raw class string. Use `emphasis: 'primary'` only for the main recommended action.
+Actions render automatically and are executed through `action.run(game, player)`, which emits `action:performing` and `action:performed`. A rule or other listener can modify the proposed player or cancel the action before `perform` runs. Keep Bootstrap class construction in the UI: use a variant name such as `primary`, `warning`, or `danger`, not a raw class string. Use `emphasis: 'primary'` only for the main recommended action.
 
 ### Inventory item
 

@@ -150,6 +150,34 @@ describe('cancellable command events', () => {
 });
 
 describe('generic engine objects', () => {
+  it('starts neutral games without placeholder decks', () => {
+    expect(createTestGame().decks).toEqual([]);
+  });
+
+  it('runs actions through cancellable and completion events', async () => {
+    const game = createTestGame();
+    const player = await game.addPlayer();
+    const calls = [];
+    const action = new Action({ id: 'eventful-action', label: 'Eventful', perform: (_game, actingPlayer) => {
+      calls.push(`performed:${actingPlayer.id}`);
+      return 'done';
+    } });
+    await game.addAction(action);
+    game.events.on('action:performing', (event) => {
+      calls.push('performing');
+      event.player = player;
+    });
+    game.events.on('action:performed', ({ result }) => calls.push(`completed:${result}`));
+
+    expect(await action.run(game)).toBe('done');
+    expect(calls).toEqual(['performing', `performed:${player.id}`, 'completed:done']);
+
+    game.events.on('action:performing', (event) => event.cancel('Action blocked'));
+    expect(await action.run(game, player)).toBe(false);
+    expect(calls).toEqual(['performing', `performed:${player.id}`, 'completed:done', 'performing']);
+    expect(game.log.some((entry) => entry.message === 'Action blocked')).toBe(true);
+  });
+
   it('adds and removes extensible collections through game commands', async () => {
     const game = createTestGame();
     const card = new Card({ id: 'runtime-card', name: 'Runtime Card' });
@@ -319,9 +347,9 @@ describe('generic engine objects', () => {
     await game.startGame();
     expect(game.getCurrentPlayer().id).toBe(first.id);
     expect(game.turn.number).toBe(1);
-    await game.actions.find((action) => action.id === 'roll').perform(game);
+    await game.actions.find((action) => action.id === 'roll').run(game);
     const rolled = game.lastRoll.total;
-    await game.actions.find((action) => action.id === 'move').perform(game, game.getCurrentPlayer());
+    await game.actions.find((action) => action.id === 'move').run(game, game.getCurrentPlayer());
     expect(first.position).toBe(rolled);
     await game.endTurn();
     expect(game.getCurrentPlayer().id).toBe(second.id);
