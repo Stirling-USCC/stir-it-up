@@ -465,6 +465,22 @@ describe('generic engine objects', () => {
     expect(effect.game).toBe(null);
   });
 
+  it('continues tearing down other attachments after a removal hook fails', async () => {
+    const game = createTestGame();
+    const player = await game.addPlayer();
+    const broken = new Effect({ id: 'broken-removal', name: 'Broken Removal' });
+    const healthy = new Effect({ id: 'healthy-removal', name: 'Healthy Removal' });
+    broken.onRemove = () => { throw new Error('First removal failed'); };
+    await player.addEffect(broken);
+    await player.addEffect(healthy);
+    await game.startGame();
+
+    await expect(game.finishGame()).rejects.toThrow('First removal failed');
+    expect(broken.active).toBe(false);
+    expect(healthy.active).toBe(false);
+    expect(healthy.owner).toBe(null);
+  });
+
   it('rejects sharing one attachment instance between players', async () => {
     const game = createTestGame();
     const first = await game.addPlayer();

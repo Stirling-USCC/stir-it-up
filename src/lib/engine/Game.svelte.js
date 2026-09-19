@@ -173,7 +173,7 @@ export class Game extends Stats {
     try {
       if (this.status === 'playing') await rule.setup(this);
     } catch (error) {
-      await rule.teardown();
+      try { await rule.teardown(); } catch {}
       this.rules.splice(this.rules.indexOf(rule), 1);
       rule.game = null;
       throw error;
@@ -298,7 +298,7 @@ export class Game extends Stats {
       for (const rule of this.rules) await rule.setup(this);
       for (const player of this.players) await this.setupPlayerAttachments(player);
     } catch (error) {
-      await this.teardownGameExtensions();
+      try { await this.teardownGameExtensions(); } catch {}
       throw error;
     }
     const starting = await this.events.emitCancellable('game:starting', { game: this, firstPlayer: first });
@@ -342,13 +342,34 @@ export class Game extends Stats {
   }
 
   async teardownPlayerAttachments(player) {
-    for (const item of player.inventory) await item.teardown?.();
-    for (const effect of player.effects) await effect.teardown?.();
+    let firstError = null;
+    for (const attachment of [...player.inventory, ...player.effects]) {
+      try {
+        await attachment.teardown?.();
+      } catch (error) {
+        firstError ??= error;
+      }
+    }
+    if (firstError) throw firstError;
   }
 
   async teardownGameExtensions() {
-    for (const rule of this.rules) await rule.teardown();
-    for (const player of this.players) await this.teardownPlayerAttachments(player);
+    let firstError = null;
+    for (const rule of this.rules) {
+      try {
+        await rule.teardown();
+      } catch (error) {
+        firstError ??= error;
+      }
+    }
+    for (const player of this.players) {
+      try {
+        await this.teardownPlayerAttachments(player);
+      } catch (error) {
+        firstError ??= error;
+      }
+    }
+    if (firstError) throw firstError;
   }
 
   async changeCurrentPlayer(playerOrId) {
