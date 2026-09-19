@@ -22,17 +22,21 @@ describe('action presentation', () => {
 });
 
 describe('compact player details and tabs', () => {
-  const game = createGame();
-  const player = new Player({
-    id: 'test-player', name: 'Recursive Potato', number: 1,
-    stats: { cabbages: 17 },
-    inventory: [new InventoryItem({ id: 'spoon', name: 'Silver Spoon', stats: { polish: 8 } })],
-    hand: [new Card({ id: 'idea', name: 'Questionable Idea', description: 'Probably fine.', stats: { risk: 8 } })],
-    effects: [new Effect({ id: 'sparkly', name: 'Sparkly', description: 'Glitters briefly.', duration: 3 })]
-  });
-  game.players.push(player);
+  async function createPlayerFixture() {
+    const game = createGame();
+    const player = new Player({
+      id: 'test-player', name: 'Recursive Potato', number: 1,
+      stats: { cabbages: 17 },
+      inventory: [new InventoryItem({ id: 'spoon', name: 'Silver Spoon', stats: { polish: 8 } })],
+      hand: [new Card({ id: 'idea', name: 'Questionable Idea', description: 'Probably fine.', stats: { risk: 8 } })],
+      effects: [new Effect({ id: 'sparkly', name: 'Sparkly', description: 'Glitters briefly.', duration: 3 })]
+    });
+    await game.addPlayer(player);
+    return { game, player };
+  }
 
-  it('keeps effects and generic stats in the player panel, with only an inventory count', () => {
+  it('keeps effects and generic stats in the player panel, with only an inventory count', async () => {
+    const { player } = await createPlayerFixture();
     const html = render(PlayerCard, { props: { player } }).body;
     expect(html).toContain('Sparkly');
     expect(html).toContain('Glitters briefly.');
@@ -43,14 +47,16 @@ describe('compact player details and tabs', () => {
     expect(html).not.toContain('Silver Spoon');
   });
 
-  it('renders the selected player’s cards in the lower panel', () => {
+  it('renders the selected player’s cards in the lower panel', async () => {
+    const { game, player } = await createPlayerFixture();
     const html = render(DetailTabs, { props: { game, selectedPlayerId: player.id, activeTab: 'cards', onselecttab: () => {} } }).body;
     expect(html).toContain("Recursive Potato's Cards");
     expect(html).toContain('Questionable Idea');
     expect(html).toContain('risk');
   });
 
-  it('renders the selected player’s inventory in the lower panel', () => {
+  it('renders the selected player’s inventory in the lower panel', async () => {
+    const { game, player } = await createPlayerFixture();
     const html = render(DetailTabs, { props: { game, selectedPlayerId: player.id, activeTab: 'inventory', onselecttab: () => {} } }).body;
     expect(html).toContain("Recursive Potato's Inventory");
     expect(html).toContain('Silver Spoon');

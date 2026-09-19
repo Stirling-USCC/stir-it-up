@@ -10,7 +10,7 @@ import { InventoryItem } from '../src/lib/engine/InventoryItem.js';
 import { Effect } from '../src/lib/engine/Effect.js';
 import { Action } from '../src/lib/engine/Action.js';
 import { Rule } from '../src/lib/engine/Rule.js';
-import { createNeutralGame as createGame } from '../src/lib/game/createNeutralGame.js';
+import { createNeutralGame as createTestGame } from '../src/lib/game/createNeutralGame.js';
 import { Die } from '../src/lib/engine/Die.svelte.js';
 import { activeSquareId, findSquareInDirection } from '../src/lib/components/boardNavigation.js';
 import { tokenPositions } from '../src/lib/components/tokenPositions.js';
@@ -87,7 +87,7 @@ describe('EventBus', () => {
 
 describe('cancellable command events', () => {
   it('lets sequential rules modify or cancel movement before square hooks run', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const player = await game.addPlayer();
     const completed = [];
     let cancelNext = false;
@@ -110,7 +110,7 @@ describe('cancellable command events', () => {
   });
 
   it('validates modified command values and reports only completed changes', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const player = await game.addPlayer();
     const completed = [];
     game.events.on('player:moved', (movement) => completed.push(movement));
@@ -122,7 +122,7 @@ describe('cancellable command events', () => {
   });
 
   it('allows stats, dice and cards to be modified or cancelled before execution', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const player = await game.addPlayer();
     game.events.on('player:stat-changing', (change) => {
       if (change.name === 'cabbages') change.value *= 2;
@@ -138,8 +138,7 @@ describe('cancellable command events', () => {
 
     const card = new Card({ id: 'interruptible', name: 'Interruptible' });
     const deck = new Deck({ id: 'interruptions', name: 'Interruptions', cards: [card] });
-    game.decks.push(deck);
-    game.attach(deck);
+    await game.addDeck(deck);
     const cancelDraw = game.events.on('card:drawing', (draw) => draw.cancel('Deck locked'));
     expect(await deck.draw(player)).toBe(null);
     expect(deck.drawPile).toEqual([card]);
@@ -152,7 +151,7 @@ describe('cancellable command events', () => {
 
 describe('generic engine objects', () => {
   it('adds and removes extensible collections through game commands', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const card = new Card({ id: 'runtime-card', name: 'Runtime Card' });
     const deck = new Deck({ id: 'runtime-deck', name: 'Runtime Deck' });
     const rule = new Rule({ id: 'runtime-rule', name: 'Runtime Rule' });
@@ -179,7 +178,7 @@ describe('generic engine objects', () => {
     const die = new Die({ id: 'extra-die', name: 'Extra Die' });
     const rule = new Rule({ id: 'extra-rule', name: 'Extra Rule' });
     const action = new Action({ id: 'extra-action', label: 'Extra Action', perform: () => {} });
-    const game = createGame({ decks: [deck], dice: [die], rules: [rule], actions: [action] });
+    const game = createTestGame({ decks: [deck], dice: [die], rules: [rule], actions: [action] });
 
     expect(game.decks).toContain(deck);
     expect(game.dice).toContain(die);
@@ -196,7 +195,7 @@ describe('generic engine objects', () => {
   });
 
   it('changes arbitrary stats on players and squares and emits events', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const player = await game.addPlayer();
     const square = game.board.squares[0];
     const changes = [];
@@ -220,7 +219,7 @@ describe('generic engine objects', () => {
   });
 
   it('moves through the board in either direction using the player command', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const player = await game.addPlayer();
     const moves = [];
     game.events.on('player:moved', ({ from, to }) => moves.push([from, to]));
@@ -249,7 +248,7 @@ describe('generic engine objects', () => {
   });
 
   it('keeps drawn cards in canonical player hands and plays them into discard piles', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const player = await game.addPlayer();
     const card = new Card({ id: 'confidence', name: 'Confidence' });
     card.onPlay = (_game, owner) => owner.incrementStat('confidence');
@@ -269,7 +268,7 @@ describe('generic engine objects', () => {
   });
 
   it('returns a removed player’s held cards to their decks', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const player = await game.addPlayer();
     const deckCard = new Card({ id: 'returnable', name: 'Returnable' });
     const looseCard = new Card({ id: 'loose', name: 'Loose' });
@@ -289,7 +288,7 @@ describe('generic engine objects', () => {
   });
 
   it('keeps the card owner consistent through play and discard proposals', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const owner = await game.addPlayer();
     const other = await game.addPlayer();
     const card = new Card({ id: 'ownership', name: 'Ownership' });
@@ -312,7 +311,7 @@ describe('generic engine objects', () => {
   });
 
   it('runs the demonstration actions through two players and updates turn state', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const first = await game.addPlayer();
     const second = await game.addPlayer();
     const phases = [];
@@ -347,7 +346,7 @@ describe('generic engine objects', () => {
   });
 
   it('keeps the turn coherent when the current player becomes inactive', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const first = await game.addPlayer();
     const second = await game.addPlayer();
     const third = await game.addPlayer();
@@ -367,7 +366,7 @@ describe('generic engine objects', () => {
   });
 
   it('keeps positions and square stats aligned when the board changes', async () => {
-    const game = createGame();
+    const game = createTestGame();
     await game.addPlayer();
     await game.addPlayer();
     const inserted = new Square({ id: 'inserted', name: 'Inserted' });
@@ -385,7 +384,7 @@ describe('generic engine objects', () => {
   });
 
   it('keeps item and effect IDs unique and emits a card play event', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const player = await game.addPlayer();
     await player.addItem(new InventoryItem({ id: 'item', name: 'Item' }));
     await expect(player.addItem(new InventoryItem({ id: 'item', name: 'Duplicate' }))).rejects.toThrow('already exists');
@@ -402,7 +401,7 @@ describe('generic engine objects', () => {
   });
 
   it('activates item and effect handlers only while their owner has them', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const player = await game.addPlayer();
     const boots = new InventoryItem({
       id: 'boots', name: 'Boots', stats: { bonus: 2 },
@@ -435,7 +434,7 @@ describe('generic engine objects', () => {
   });
 
   it('rolls back an attachment whose setup hook fails', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const player = await game.addPlayer();
     await game.startGame();
     const item = new InventoryItem({
@@ -453,7 +452,7 @@ describe('generic engine objects', () => {
   });
 
   it('clears attachment ownership even when its removal hook fails', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const player = await game.addPlayer();
     const effect = new Effect({ id: 'stubborn-effect', name: 'Stubborn Effect' });
     effect.onRemove = () => { throw new Error('Broken removal'); };
@@ -467,7 +466,7 @@ describe('generic engine objects', () => {
   });
 
   it('rejects sharing one attachment instance between players', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const first = await game.addPlayer();
     const second = await game.addPlayer();
     const item = await first.addItem(new InventoryItem({ id: 'one-only', name: 'One Only' }));
@@ -491,7 +490,7 @@ describe('the default board and spatial navigation', () => {
   });
 
   it('has 100 squares in a left-to-right, top-to-bottom 10 by 10 layout', () => {
-    const squares = createGame().board.squares;
+    const squares = createTestGame().board.squares;
     expect(squares).toHaveLength(100);
     expect(squares.map((square) => square.coordinates).slice(0, 11)).toEqual([
       ...Array.from({ length: 10 }, (_, x) => ({ x, y: 0 })),
@@ -504,7 +503,7 @@ describe('the default board and spatial navigation', () => {
   });
 
   it('navigates by coordinates on a grid and an irregular board', () => {
-    const squares = createGame().board.squares;
+    const squares = createTestGame().board.squares;
     expect(findSquareInDirection(squares, squares[0], { x: 1, y: 0 })).toBe(squares[1]);
     expect(findSquareInDirection(squares, squares[0], { x: 0, y: 1 })).toBe(squares[10]);
     expect(findSquareInDirection(squares, squares[0], { x: -1, y: 0 })).toBe(null);
@@ -521,7 +520,7 @@ describe('the default board and spatial navigation', () => {
 
 describe('pregame roster', () => {
   it('assigns unique IDs and numbers, reuses vacant numbers, and locks at eight', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const players = await Promise.all(Array.from({ length: 3 }, () => game.addPlayer()));
     expect(new Set(players.map((player) => player.id)).size).toBe(3);
     expect(players.map((player) => player.number)).toEqual([1, 2, 3]);
@@ -533,7 +532,7 @@ describe('pregame roster', () => {
   });
 
   it('allows renaming before start and rejects roster changes after start', async () => {
-    const game = createGame();
+    const game = createTestGame();
     await expect(game.startGame()).rejects.toThrow('Add an active player');
     const player = await game.addPlayer();
     await player.rename('Recursive Potato');
@@ -556,7 +555,7 @@ describe('pregame roster', () => {
 
 describe('individual dice', () => {
   it('rolls a chosen group, preserves die identity, and supports custom rolls', async () => {
-    const game = createGame();
+    const game = createTestGame();
     const d4 = new Die({ id: 'four', name: 'Four', sides: 4, roll: () => 3 });
     const d20 = new Die({ id: 'twenty', name: 'Twenty', sides: 20, roll: async () => 17 });
     const roll = await game.rollDice([d4, d20]);
