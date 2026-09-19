@@ -267,6 +267,26 @@ describe('generic engine objects', () => {
     expect(player.getStat('confidence')).toBe(1);
   });
 
+  it('returns a removed player’s held cards to their decks', async () => {
+    const game = createGame();
+    const player = await game.addPlayer();
+    const deckCard = new Card({ id: 'returnable', name: 'Returnable' });
+    const looseCard = new Card({ id: 'loose', name: 'Loose' });
+    const deck = new Deck({ id: 'returns', name: 'Returns', cards: [deckCard] });
+    await game.addDeck(deck);
+    await game.drawCard(deck, player);
+    await player.addCard(looseCard);
+
+    await game.removePlayer(player);
+
+    expect(player.hand).toHaveLength(0);
+    expect(deck.drawPile).toContain(deckCard);
+    expect(deckCard.owner).toBe(null);
+    expect(deckCard.game).toBe(game);
+    expect(looseCard.owner).toBe(null);
+    expect(looseCard.game).toBe(null);
+  });
+
   it('keeps the card owner consistent through play and discard proposals', async () => {
     const game = createGame();
     const owner = await game.addPlayer();

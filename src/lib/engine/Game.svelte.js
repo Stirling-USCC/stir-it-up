@@ -267,13 +267,29 @@ export class Game extends Stats {
     const removalIndex = this.players.indexOf(removal.player);
     if (removalIndex < 0) throw new Error('Player to remove is not in this game');
     const [player] = this.players.splice(removalIndex, 1);
+    await this.returnPlayerCards(player);
     player.game = null;
     for (const item of player.inventory) { item.game = null; item.owner = null; }
     for (const effect of player.effects) { effect.game = null; effect.owner = null; }
-    for (const card of player.hand) card.owner = null;
     await this.events.emit('player:removed', { player });
     await this.logEvent(`${player.name} left the game.`, 'player');
     return player;
+  }
+
+  async returnPlayerCards(player) {
+    for (const card of [...player.hand]) {
+      player.hand.splice(player.hand.indexOf(card), 1);
+      card.owner = null;
+      const deck = card.deck;
+      if (deck && this.decks.includes(deck) && deck.cards.includes(card)) {
+        if (!deck.drawPile.includes(card) && !deck.discardPile.includes(card)) deck.drawPile.push(card);
+        card.game = this;
+        await this.events.emit('card:returned', { deck, card, player });
+      } else {
+        card.game = null;
+      }
+      await this.events.emit('player:card-removed', { player, card });
+    }
   }
 
   async startGame() {
