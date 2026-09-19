@@ -96,6 +96,8 @@ export class Player extends Stats {
     if (this.inventory.some((existing) => existing.id === item.id)) throw new Error(`Item ID already exists: ${item.id}`);
     this.inventory.push(item);
     item.game = this.game;
+    item.owner = this;
+    if (this.game?.status === 'playing') await item.setup(this.game, this);
     await this.game?.events.emit('player:item-added', { player: this, item });
     await this.game?.logEvent(`${this.name} received ${item.name}.`, 'item');
     return item;
@@ -110,7 +112,8 @@ export class Player extends Stats {
     const removalIndex = this.inventory.indexOf(removal.item);
     if (removalIndex < 0) throw new Error('Item to remove is not in the inventory');
     const [item] = this.inventory.splice(removalIndex, 1);
-    item.game = null;
+    if (item.active) await item.teardown();
+    else { item.game = null; item.owner = null; }
     await this.game?.events.emit('player:item-removed', { player: this, item });
     await this.game?.logEvent(`${this.name} removed ${item.name}.`, 'item');
     return item;
@@ -124,6 +127,8 @@ export class Player extends Stats {
     if (this.effects.some((existing) => existing.id === effect.id)) throw new Error(`Effect ID already exists: ${effect.id}`);
     this.effects.push(effect);
     effect.game = this.game;
+    effect.owner = this;
+    if (this.game?.status === 'playing') await effect.setup(this.game, this);
     await this.game?.events.emit('player:effect-added', { player: this, effect });
     await this.game?.logEvent(`${this.name} gained ${effect.name}.`, 'effect');
     return effect;
@@ -138,7 +143,8 @@ export class Player extends Stats {
     const removalIndex = this.effects.indexOf(removal.effect);
     if (removalIndex < 0) throw new Error('Effect to remove is not on the player');
     const [effect] = this.effects.splice(removalIndex, 1);
-    effect.game = null;
+    if (effect.active) await effect.teardown();
+    else { effect.game = null; effect.owner = null; }
     await this.game?.events.emit('player:effect-removed', { player: this, effect });
     await this.game?.logEvent(`${this.name} lost ${effect.name}.`, 'effect');
     return effect;

@@ -319,6 +319,39 @@ describe('generic engine objects', () => {
     await card.play();
     expect(played).toEqual(['card']);
   });
+
+  it('activates item and effect handlers only while their owner has them', async () => {
+    const game = createGame();
+    const player = await game.addPlayer();
+    const boots = new InventoryItem({
+      id: 'boots', name: 'Boots', stats: { bonus: 2 },
+      handlers: {
+        'player:moving': (_game, movement, owner, item) => {
+          if (movement.player === owner) movement.amount += item.getStat('bonus');
+        }
+      }
+    });
+    const rooted = new Effect({
+      id: 'rooted', name: 'Rooted',
+      handlers: {
+        'player:moving': (_game, movement, owner) => {
+          if (movement.player === owner) movement.cancel('Rooted');
+        }
+      }
+    });
+
+    await player.addItem(boots);
+    await game.startGame();
+    await player.move(1);
+    expect(player.position).toBe(3);
+    await player.addEffect(rooted);
+    await player.move(4);
+    expect(player.position).toBe(3);
+    await player.removeEffect(rooted);
+    await player.removeItem(boots);
+    await player.move(1);
+    expect(player.position).toBe(4);
+  });
 });
 
 describe('the default board and spatial navigation', () => {

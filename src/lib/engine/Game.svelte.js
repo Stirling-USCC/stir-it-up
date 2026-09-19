@@ -243,8 +243,8 @@ export class Game extends Stats {
     if (removalIndex < 0) throw new Error('Player to remove is not in this game');
     const [player] = this.players.splice(removalIndex, 1);
     player.game = null;
-    for (const item of player.inventory) item.game = null;
-    for (const effect of player.effects) effect.game = null;
+    for (const item of player.inventory) { item.game = null; item.owner = null; }
+    for (const effect of player.effects) { effect.game = null; effect.owner = null; }
     for (const card of player.hand) card.owner = null;
     await this.events.emit('player:removed', { player });
     await this.logEvent(`${player.name} left the game.`, 'player');
@@ -256,13 +256,16 @@ export class Game extends Stats {
     const first = this.players.find((player) => player.active);
     if (!first) throw new Error('Add an active player before starting');
     for (const rule of this.rules) await rule.setup(this);
+    for (const player of this.players) await this.setupPlayerAttachments(player);
     const starting = await this.events.emitCancellable('game:starting', { game: this, firstPlayer: first });
     if (starting.cancelled) {
       for (const rule of this.rules) await rule.teardown();
+      for (const player of this.players) await this.teardownPlayerAttachments(player);
       return false;
     }
     if (!this.players.includes(starting.firstPlayer) || !starting.firstPlayer.active) {
       for (const rule of this.rules) await rule.teardown();
+      for (const player of this.players) await this.teardownPlayerAttachments(player);
       throw new Error('The first player must be active and in the game');
     }
     this.status = 'playing';
@@ -270,6 +273,7 @@ export class Game extends Stats {
     if (this.turn.currentPlayerId !== starting.firstPlayer.id) {
       this.status = 'waiting';
       for (const rule of this.rules) await rule.teardown();
+      for (const player of this.players) await this.teardownPlayerAttachments(player);
       return false;
     }
     await this.events.emit('game:started', { game: this });
@@ -288,7 +292,18 @@ export class Game extends Stats {
     await this.events.emit('game:finished', { game: this });
     await this.logEvent('Game finished.', 'game');
     for (const rule of this.rules) await rule.teardown();
+    for (const player of this.players) await this.teardownPlayerAttachments(player);
     return true;
+  }
+
+  async setupPlayerAttachments(player) {
+    for (const item of player.inventory) await item.setup?.(this, player);
+    for (const effect of player.effects) await effect.setup?.(this, player);
+  }
+
+  async teardownPlayerAttachments(player) {
+    for (const item of player.inventory) await item.teardown?.();
+    for (const effect of player.effects) await effect.teardown?.();
   }
 
   async changeCurrentPlayer(playerOrId) {
