@@ -210,8 +210,6 @@ export function createShowcaseGame() {
     new Player({ id: 'showcase-5', name: 'Sleepy Penguin', position: 99, stats: { naps: 4 } })
   ];
 
-  let heldCard = $state(null);
-  let heldDeck = $state(null);
   const playing = (game, player) => game.status === 'playing' && !!player;
   const showcaseActions = [
     new Action({ id: 'showcase-walk-six', label: 'Walk 6', description: 'Leave Start and pass the Cabbage Patch.', available: playing, perform: (game, player) => player.move(6) }),
@@ -220,10 +218,6 @@ export function createShowcaseGame() {
     new Action({ id: 'showcase-walk-tea', label: 'Walk to Tea', description: 'Walk a path to square 38, passing the Mystery Portal.', available: playing, perform: (game, player) => player.move(tea.position - player.position) }),
     new Action({ id: 'showcase-jump-glitter', label: 'Jump to Glitter', description: 'Land on square 73 and update its intensity.', available: playing, perform: (game, player) => player.moveTo(glitter.position) }),
     new Action({ id: 'showcase-walk-finish', label: 'Walk to Finish', description: 'Walk a path to square 100 and count the visit.', available: playing, perform: (game, player) => player.move(lastSquare.position - player.position) }),
-    new Action({ id: 'showcase-draw-curiosity', label: 'Draw Curiosity', available: (game, player) => playing(game, player) && !heldCard && curiosityDeck.drawPile.length > 0, perform: async (game, player) => { heldDeck = curiosityDeck; heldCard = await game.drawCard(curiosityDeck, player); } }),
-    new Action({ id: 'showcase-draw-campus', label: 'Draw Campus', available: (game, player) => playing(game, player) && !heldCard && campusDeck.drawPile.length > 0, perform: async (game, player) => { heldDeck = campusDeck; heldCard = await game.drawCard(campusDeck, player); } }),
-    new Action({ id: 'showcase-play-card', label: 'Play drawn card', available: (game, player) => playing(game, player) && !!heldCard, perform: (game, player) => heldCard.play(player) }),
-    new Action({ id: 'showcase-discard-card', label: 'Discard drawn card', available: (game, player) => playing(game, player) && !!heldCard, perform: async (game, player) => { await heldDeck.discard(heldCard, player); heldCard = null; heldDeck = null; } }),
     new Action({ id: 'showcase-reset-deck', label: 'Reset & shuffle', description: 'Reset the Curiosity deck, then shuffle its draw pile.', available: playing, perform: async () => { await curiosityDeck.reset(); await curiosityDeck.shuffle(); } }),
     new Action({ id: 'showcase-reset-campus', label: 'Reset Campus', description: 'Return Campus cards to the draw pile so Library Shortcut can be played.', available: playing, perform: () => campusDeck.reset() }),
     new Action({ id: 'showcase-toggle-buzz', label: 'Toggle Buzzing', description: 'Add or remove an effect; it changes caffeine on rolls.', available: playing, perform: (game, player) => player.effects.some((effect) => effect.id === 'buzzing')

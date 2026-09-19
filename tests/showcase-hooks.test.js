@@ -51,27 +51,24 @@ describe('interactive showcase hooks', () => {
     const { game, players, curiosityDeck, campusDeck, observer } = await startedShowcase();
     const player = players[0];
 
-    await perform(game, 'showcase-draw-curiosity');
+    let card = await game.drawCard(curiosityDeck, player);
     expect(player.getStat('cabbages')).toBe(18);
-    expect(game.getAvailableActions().some((action) => action.id === 'showcase-play-card')).toBe(true);
-    await perform(game, 'showcase-play-card');
+    expect(player.hand).toEqual([card]);
+    await game.playCard(card, player);
     expect(player.getStat('cabbages')).toBe(21);
     expect(observer.getStat('cardsObserved')).toBe(1);
-    await perform(game, 'showcase-discard-card');
     expect(curiosityDeck.discardPile[0].getStat('discardCount')).toBe(1);
-    expect(game.getAvailableActions().some((action) => action.id === 'showcase-play-card')).toBe(false);
+    expect(player.hand).toHaveLength(0);
 
-    await perform(game, 'showcase-draw-curiosity');
-    await perform(game, 'showcase-play-card');
+    card = await game.drawCard(curiosityDeck, player);
+    await game.playCard(card, player);
     expect(player.position).toBe(28); // Mirror Maze jumps onto the portal.
     expect(game.board.squares[28].getStat('landings')).toBe(1);
-    await perform(game, 'showcase-discard-card');
 
     await perform(game, 'showcase-reset-campus');
-    await perform(game, 'showcase-draw-campus');
-    await perform(game, 'showcase-play-card');
+    card = await game.drawCard(campusDeck, player);
+    await game.playCard(card, player);
     expect(player.position).toBe(32); // Library Shortcut walks four squares.
-    await perform(game, 'showcase-discard-card');
     expect(campusDeck.discardPile.some((card) => card.id === 'library-card')).toBe(true);
 
     await perform(game, 'showcase-reset-deck');
