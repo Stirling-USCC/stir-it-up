@@ -17,7 +17,7 @@ npm run dev
 
 Open the address printed by Vite. Add at least one player, start the game, and use the controls beside the board.
 
-The `/showcase` route contains temporary example content demonstrating the engine and interface. The main route remains the deliberately sparse game that contributors build on.
+The `/showcase` route contains temporary example content demonstrating the engine and interface. Its definitions are grouped by object type under `src/lib/game/showcase/`, making it a useful source of working examples. The main route remains the deliberately sparse game that contributors build on.
 
 ## Add something
 
@@ -58,7 +58,7 @@ The main game currently provides:
 - one ordinary six-sided die;
 - generic actions, cards, decks, rules, effects, inventory, stats, events, and logging.
 
-Drawn cards live in player hands and can be played or discarded through the generic interface. Items and effects may carry their own event handlers, while rules handle behaviour that applies across the game.
+Drawn cards live in player hands and can be played or discarded through the generic interface. A held card always belongs to the player acting on it, and cards held by a player removed before the game starts return to their decks when possible. Items and effects may carry their own event handlers, while rules handle behaviour that applies across the game.
 
 It intentionally has no scoring system, economy, win condition, or meaningful game content yet. Those are invitations, not omissions to tidy away all at once.
 

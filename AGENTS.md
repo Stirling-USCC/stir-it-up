@@ -5,7 +5,7 @@ Your job is to turn one visitor's idea into a small, working addition to **Stir 
 ## Work quickly
 
 1. Read the visitor's request and check whether the worktree already contains unrelated changes.
-2. Read only the relevant engine class, `src/lib/game/createGame.js`, and one similar example. Use `src/lib/game/createShowcaseGame.svelte.js` when you need examples of several hooks working together.
+2. Read only the relevant engine class, `src/lib/game/createGame.js`, and one similar example. Working examples are grouped by object type under `src/lib/game/showcase/`; `createShowcaseGame.svelte.js` shows how they are assembled.
 3. Implement the smallest complete and playful version of the idea. Infer minor details instead of asking questions.
 4. Use your judgement about verification. Run a focused test or check when it is useful for the change; reserve broad test, check, and build runs for engine, shared UI, configuration, or other changes where they provide meaningful confidence.
 5. Stage only the files you changed and commit them with a short, specific imperative message, such as `Add cabbage rain card`.
@@ -141,7 +141,7 @@ const chaosDeck = new Deck({
 // Pass `decks: [chaosDeck]` to createNeutralGame().
 ```
 
-A deck tracks its full card list, draw pile, and discard pile. The generic Decks tab lets the current player draw; drawn cards enter `player.hand` and appear in the Cards tab with Play and Discard controls. `game.playCard(card, player)` runs `onPlay` and then discards the card. Usually defining the card and including its deck in the game is enough.
+A deck tracks its full card list, draw pile, and discard pile. The generic Decks tab lets the current player draw; drawn cards enter `player.hand` and appear in the Cards tab with Play and Discard controls. `game.playCard(card, player)` runs `onPlay` and then discards the card. A held card must be played or discarded by its owner; represent a different affected player with a separate target in your card logic. Usually defining the card and including its deck in the game is enough.
 
 ### Die
 
@@ -197,7 +197,7 @@ const springBoots = new InventoryItem({
 await player.addItem(springBoots);
 ```
 
-Items store persistent player-owned state. Their handlers are active only while the owner carries them. Each handler receives `(game, event, owner, item)`. Add and remove items with `player.addItem(item)` and `player.removeItem(id)` so subscriptions, events, and UI updates occur.
+Items store persistent player-owned state. Their handlers are active only while the owner carries them. Each handler receives `(game, event, owner, item)`. Add and remove items with `player.addItem(item)` and `player.removeItem(id)` so subscriptions, events, and UI updates occur. One item instance belongs to one player; create another instance instead of sharing the same object.
 
 ### Effect
 
@@ -217,7 +217,7 @@ const rooted = new Effect({
 await player.addEffect(rooted);
 ```
 
-Effects describe state attached to a player. Their handler signature is `(game, event, owner, effect)`. Use `player.addEffect(effect)` and `player.removeEffect(id)` rather than editing `player.effects` directly during play. `duration` is currently descriptive; a feature that uses it should explicitly update or remove the effect.
+Effects describe state attached to a player. Their handler signature is `(game, event, owner, effect)`. Use `player.addEffect(effect)` and `player.removeEffect(id)` rather than editing `player.effects` directly during play. One effect instance belongs to one player. `duration` is currently descriptive; a feature that uses it should explicitly update or remove the effect.
 
 ### Rule
 
@@ -297,7 +297,7 @@ Common proposal/completion event pairs include:
 - `turn:starting` / `turn:started`
 - `turn:ending` / `turn:ended`
 
-Read the command that emits an event before relying on its detail fields. Proposal handlers share one mutable object and run in registration order. A cancelled command normally returns `null`, `false`, the previous value, or the unchanged position, depending on the command; check the local method when that distinction matters. Passing a reason to `event.cancel(reason)` adds that reason to the game log automatically.
+Read the command that emits an event before relying on its detail fields. Proposal handlers share one mutable object and run in registration order. Some commands dispatch that object through a generic event and then a more specific event; stat changes, for example, reach `object:stat-changing` before `player:stat-changing`. Cancellation is finalised only after every applicable proposal listener has run. A cancelled command normally returns `null`, `false`, the previous value, or the unchanged position, depending on the command; check the local method when that distinction matters. Passing a reason to `event.cancel(reason)` adds that reason to the game log automatically.
 
 ## UI changes
 
