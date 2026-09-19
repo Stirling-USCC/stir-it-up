@@ -50,7 +50,8 @@ export class Deck extends Stats {
   async reset() {
     const reset = await this.game?.events.emitCancellable('deck:resetting', { deck: this }) ?? {};
     if (reset.cancelled) return false;
-    this.drawPile = [...this.cards];
+    // Cards held by players stay out of the deck until played or discarded.
+    this.drawPile = this.cards.filter((card) => !card.owner);
     this.discardPile = [];
     await this.game?.events.emit('deck:reset', { deck: this });
     return true;

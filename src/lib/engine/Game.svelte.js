@@ -144,6 +144,7 @@ export class Game extends Stats {
     if (removal.cancelled) return null;
     deck = removal.deck;
     if (!this.decks.includes(deck)) throw new Error('Deck to remove is not in this game');
+    if (deck.cards.some((card) => card.owner)) throw new Error('Cannot remove a deck while a player is holding one of its cards');
     this.decks.splice(this.decks.indexOf(deck), 1);
     deck.game = null;
     for (const card of deck.cards) card.game = null;

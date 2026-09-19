@@ -225,6 +225,9 @@ describe('generic engine objects', () => {
     expect(await game.drawCard(deck, player)).toBe(card);
     expect(player.hand).toEqual([card]);
     expect(card.owner).toBe(player);
+    await deck.reset();
+    expect(deck.drawPile).not.toContain(card);
+    await expect(game.removeDeck(deck)).rejects.toThrow('holding');
     expect(await game.playCard(card, player)).toBe(true);
     expect(player.hand).toHaveLength(0);
     expect(deck.discardPile).toEqual([card]);
