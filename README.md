@@ -1,52 +1,63 @@
-# Stir It Up
+# Stir it Up!
 
-A deliberately empty, local board-game playground for the University of Stirling Computing Club. It uses SvelteKit, Svelte 5 runes, plain JavaScript, and Bootstrap. The starting session has a 100-square board, an empty player roster, an empty deck, and one d6. It has no real game rules, cards, scoring, economy, or win condition.
+**Stir it Up!** is a collaborative board game made by visitors to the University of Stirling Computing Club's open day stall.
 
-## Run it
+The project begins with a board and a small set of generic game building blocks, but almost no game. Each visitor gets a few minutes with a coding agent to add a square, card, rule, die, visual change, or whatever strange idea they bring. Every contribution becomes part of the same increasingly chaotic game.
+
+Balance is optional. Surprises are encouraged.
+
+## Try it locally
+
+You need a recent version of Node.js and npm.
 
 ```sh
 npm install
 npm run dev
 ```
 
-Open the URL printed by Vite. `npm run build` checks the production bundle, `npm run check` runs Svelte diagnostics, and `npm test` runs the small engine suite.
+Open the address printed by Vite. Add at least one player, start the game, and use the controls beside the board.
 
-## How it fits together
+The `/showcase` route contains temporary example content demonstrating the engine and interface. The main route remains the deliberately sparse game that contributors build on.
 
-`src/lib/engine/` contains ordinary JavaScript classes. `Game.svelte.js`, `Player.svelte.js`, `Board.svelte.js`, `Square.svelte.js`, `Deck.svelte.js`, `Turn.svelte.js`, and `Stats.svelte.js` use Svelte 5 `$state` fields. Components read those fields directly, so a command changing a player or stat updates the board and panels without a refresh. Each page creates its own in-memory game session. SvelteKit server rendering remains enabled; there is no persistence or networking yet.
+## Add something
 
-Game state describes what is true now. Commands change what is true. Present-tense events describe a proposed change; past-tense events describe what happened. Svelte renders what is true and reacts to events.
+Small contributions are the point of the project. Some good starting ideas are:
 
-Use subject methods for changes: `await player.move(-5)`, `await player.setStat('cabbages', 12)`, `await player.addItem(item)`, or `await square.setStat('difficulty', 2)`. The methods are async because they await domain event listeners. Stats are generic named values on players, squares, cards, decks, dice, rules, effects, items, and the game. `getStat` and `hasStat` are synchronous; `addStat`, `setStat`, `incrementStat`, `decrementStat`, and `removeStat` are async. `addStat` requires the name to be absent; incrementing a missing stat starts at zero. Numeric operations reject nonnumeric values.
+- change a square's name, icon, colour, or behaviour;
+- add a card or deck;
+- create an unusual die;
+- add an item or temporary effect;
+- make a rule react to something that happens;
+- add a new player action;
+- improve how part of the game looks or sounds.
 
-`EventBus.emit` calls listeners one at a time and awaits each. Commands first use `emitCancellable` for events such as `player:moving`, `card:playing`, and `object:stat-changing`. A listener can modify the proposed values or call `event.cancel(reason)`. The command then validates the final values, changes state unless cancelled, and emits a completed event such as `player:moved`, `card:played`, or `object:stat-changed`. Cancellation prevents the command but does not stop later listeners from seeing the proposed event.
+The main game content is assembled in [`src/lib/game/createGame.js`](src/lib/game/createGame.js). Engine objects live in [`src/lib/engine/`](src/lib/engine/), and Svelte components live in [`src/lib/components/`](src/lib/components/). Existing code is intended to be copied and adapted.
 
-```js
-new Rule({
-    id: 'heavy-boots',
-    name: 'Heavy Boots',
-    handlers: {
-        'player:moving': (_game, movement) => {
-            movement.amount -= 1;
-        }
-    }
-});
+The project deliberately uses plain JavaScript, Svelte 5, and Bootstrap. Keep additions understandable to somebody learning the codebase, keep game behaviour in engine or game files, and preserve keyboard and screen-reader access when changing the interface.
+
+Instructions for coding agents are in [`AGENTS.md`](AGENTS.md).
+
+## Useful commands
+
+```sh
+npm run dev      # start the local development server
+npm test         # run engine and presentation tests
+npm run check    # check Svelte and JavaScript
+npm run build    # create a production build
 ```
 
-Engine commands also add persistent human-readable log entries. The toast component subscribes to `dice:rolled` separately; toasts are transient UI state. A future animation listener can await a completed event without putting animation code in the engine.
+## Current starting point
 
-## Extend it
+The main game currently provides:
 
-`src/lib/game/createGame.js` owns the neutral 10 × 10 layout and the tiny demonstration flow. Each `Square` has a stable ID, a logical `position`, and independent `{ x, y }` coordinates; coordinates may be fractional. Add squares there or use `await game.board.addSquare(square)` and `await game.board.removeSquare(id)` at runtime. Board edits reindex positions while preserving coordinates and update players without triggering movement hooks. The board uses coordinates for display and arrow-key navigation. Square subclasses can override async `onLand`, `onLeave`, and `onPass`.
+- a 100-square board;
+- a pre-game roster for one to eight players;
+- turns and phases;
+- one ordinary six-sided die;
+- generic actions, cards, decks, rules, effects, inventory, stats, events, and logging.
 
-The waiting screen lets you add up to eight players, rename or remove them, then start. `await game.addPlayer()` creates a random name, stable ID, number, and colour. `await player.rename(name)` and `await game.removePlayer(player)` work only before the game starts. One player is enough to start.
+It intentionally has no scoring system, economy, win condition, or meaningful game content yet. Those are invitations, not omissions to tidy away all at once.
 
-Each `Die` has its own ID, sides, colour, stats, and roll function. Pass `roll: async ({ game, player }) => value` to customise one without subclassing. `await game.rollDice([dieA, dieB])` returns a `DiceRoll` with `{ die, value }` entries and optional `total`, `min`, and `max` helpers. Use `await game.addDie(die)` to add one to the visible game collection.
+## After the open day
 
-Add `Card` instances to a `Deck`; card hooks are `onDraw`, `onPlay`, and `onDiscard`, and `await card.play(player)` emits a domain event. Add `Rule` objects with event handlers, or pass new `Action` objects into the game to change what the action panel offers. Turn phases can be replaced by passing a `phases` array to `Game`. No UI change is needed to show new squares, players, stats, items, effects, decks, dice, cards, log entries, or available actions. `StatsList.svelte` handles named values dynamically; `PlayerCard.svelte` shows inventories and effects in compact details.
-
-The demonstration buttons deliberately separate rolling from moving. `Roll dice` records a result; `Move by roll` then calls `player.move(result.total)`; `End turn` selects the next active player. These actions are examples of wiring, not rules for a future game.
-
-## Browser verification
-
-With the dev server running, add players, start the game, roll, move, and end a turn. The board has one Tab stop: use arrow keys to move spatially, Home and End to reach the first and last logical squares, and Tab to leave it. Hovering or focusing a square shows its Bootstrap tooltip; its button name also contains the information for screen readers.
+Stir it Up! is intended to remain an approachable open-source project where students can practise JavaScript, Svelte, Git, pull requests, testing, review, and deployment. Tiny contributions are welcome alongside ambitious new systems.
