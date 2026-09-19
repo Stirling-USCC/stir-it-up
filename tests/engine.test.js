@@ -412,6 +412,49 @@ describe('generic engine objects', () => {
     await player.move(1);
     expect(player.position).toBe(4);
   });
+
+  it('rolls back an attachment whose setup hook fails', async () => {
+    const game = createGame();
+    const player = await game.addPlayer();
+    await game.startGame();
+    const item = new InventoryItem({
+      id: 'broken-item', name: 'Broken Item',
+      handlers: { 'player:moving': () => {} }
+    });
+    item.onAdd = () => { throw new Error('Broken attachment'); };
+
+    await expect(player.addItem(item)).rejects.toThrow('Broken attachment');
+    expect(player.inventory).not.toContain(item);
+    expect(item.active).toBe(false);
+    expect(item.owner).toBe(null);
+    expect(item.game).toBe(null);
+    expect(item.unsubscribers).toHaveLength(0);
+  });
+
+  it('clears attachment ownership even when its removal hook fails', async () => {
+    const game = createGame();
+    const player = await game.addPlayer();
+    const effect = new Effect({ id: 'stubborn-effect', name: 'Stubborn Effect' });
+    effect.onRemove = () => { throw new Error('Broken removal'); };
+    await player.addEffect(effect);
+    await game.startGame();
+
+    await expect(effect.teardown()).rejects.toThrow('Broken removal');
+    expect(effect.active).toBe(false);
+    expect(effect.owner).toBe(null);
+    expect(effect.game).toBe(null);
+  });
+
+  it('rejects sharing one attachment instance between players', async () => {
+    const game = createGame();
+    const first = await game.addPlayer();
+    const second = await game.addPlayer();
+    const item = await first.addItem(new InventoryItem({ id: 'one-only', name: 'One Only' }));
+
+    await expect(second.addItem(item)).rejects.toThrow('another owner');
+    expect(first.inventory).toContain(item);
+    expect(second.inventory).not.toContain(item);
+  });
 });
 
 describe('the default board and spatial navigation', () => {

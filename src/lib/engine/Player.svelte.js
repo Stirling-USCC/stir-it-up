@@ -94,10 +94,19 @@ export class Player extends Stats {
     item = addition.item;
     if (item?.id == null) throw new Error('An item needs an ID');
     if (this.inventory.some((existing) => existing.id === item.id)) throw new Error(`Item ID already exists: ${item.id}`);
+    if (item.owner && item.owner !== this) throw new Error('Item already belongs to another owner');
+    if (item.active) throw new Error('Item is already active');
     this.inventory.push(item);
     item.game = this.game;
     item.owner = this;
-    if (this.game?.status === 'playing') await item.setup(this.game, this);
+    try {
+      if (this.game?.status === 'playing') await item.setup(this.game, this);
+    } catch (error) {
+      this.inventory.splice(this.inventory.indexOf(item), 1);
+      item.game = null;
+      item.owner = null;
+      throw error;
+    }
     await this.game?.events.emit('player:item-added', { player: this, item });
     await this.game?.logEvent(`${this.name} received ${item.name}.`, 'item');
     return item;
@@ -125,10 +134,19 @@ export class Player extends Stats {
     effect = addition.effect;
     if (effect?.id == null) throw new Error('An effect needs an ID');
     if (this.effects.some((existing) => existing.id === effect.id)) throw new Error(`Effect ID already exists: ${effect.id}`);
+    if (effect.owner && effect.owner !== this) throw new Error('Effect already belongs to another owner');
+    if (effect.active) throw new Error('Effect is already active');
     this.effects.push(effect);
     effect.game = this.game;
     effect.owner = this;
-    if (this.game?.status === 'playing') await effect.setup(this.game, this);
+    try {
+      if (this.game?.status === 'playing') await effect.setup(this.game, this);
+    } catch (error) {
+      this.effects.splice(this.effects.indexOf(effect), 1);
+      effect.game = null;
+      effect.owner = null;
+      throw error;
+    }
     await this.game?.events.emit('player:effect-added', { player: this, effect });
     await this.game?.logEvent(`${this.name} gained ${effect.name}.`, 'effect');
     return effect;

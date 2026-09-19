@@ -63,9 +63,21 @@ export class Game extends Stats {
 
   attach(object) {
     object.game = this;
-    for (const item of object.inventory ?? []) { item.game = this; item.owner = object; }
-    for (const effect of object.effects ?? []) { effect.game = this; effect.owner = object; }
-    for (const card of object.hand ?? []) { card.game = this; card.owner = object; }
+    for (const item of object.inventory ?? []) {
+      if (item.owner && item.owner !== object) throw new Error('Item already belongs to another owner');
+      item.game = this;
+      item.owner = object;
+    }
+    for (const effect of object.effects ?? []) {
+      if (effect.owner && effect.owner !== object) throw new Error('Effect already belongs to another owner');
+      effect.game = this;
+      effect.owner = object;
+    }
+    for (const card of object.hand ?? []) {
+      if (card.owner && card.owner !== object) throw new Error('Card already belongs to another owner');
+      card.game = this;
+      card.owner = object;
+    }
     for (const card of object.cards ?? []) {
       card.game = this;
       card.deck = object;
@@ -160,7 +172,14 @@ export class Game extends Stats {
     if (this.rules.some((existing) => existing.id === rule.id)) throw new Error(`Rule ID already exists: ${rule.id}`);
     this.attach(rule);
     this.rules.push(rule);
-    if (this.status === 'playing') await rule.setup(this);
+    try {
+      if (this.status === 'playing') await rule.setup(this);
+    } catch (error) {
+      await rule.teardown();
+      this.rules.splice(this.rules.indexOf(rule), 1);
+      rule.game = null;
+      throw error;
+    }
     await this.events.emit('rule:added', { rule });
     return rule;
   }
@@ -261,25 +280,27 @@ export class Game extends Stats {
     if (this.status !== 'waiting') throw new Error('Game has already started');
     const first = this.players.find((player) => player.active);
     if (!first) throw new Error('Add an active player before starting');
-    for (const rule of this.rules) await rule.setup(this);
-    for (const player of this.players) await this.setupPlayerAttachments(player);
+    try {
+      for (const rule of this.rules) await rule.setup(this);
+      for (const player of this.players) await this.setupPlayerAttachments(player);
+    } catch (error) {
+      await this.teardownGameExtensions();
+      throw error;
+    }
     const starting = await this.events.emitCancellable('game:starting', { game: this, firstPlayer: first });
     if (starting.cancelled) {
-      for (const rule of this.rules) await rule.teardown();
-      for (const player of this.players) await this.teardownPlayerAttachments(player);
+      await this.teardownGameExtensions();
       return false;
     }
     if (!this.players.includes(starting.firstPlayer) || !starting.firstPlayer.active) {
-      for (const rule of this.rules) await rule.teardown();
-      for (const player of this.players) await this.teardownPlayerAttachments(player);
+      await this.teardownGameExtensions();
       throw new Error('The first player must be active and in the game');
     }
     this.status = 'playing';
     await this.changeCurrentPlayer(starting.firstPlayer.id);
     if (this.turn.currentPlayerId !== starting.firstPlayer.id) {
       this.status = 'waiting';
-      for (const rule of this.rules) await rule.teardown();
-      for (const player of this.players) await this.teardownPlayerAttachments(player);
+      await this.teardownGameExtensions();
       return false;
     }
     await this.events.emit('game:started', { game: this });
@@ -297,8 +318,7 @@ export class Game extends Stats {
     this.status = 'finished';
     await this.events.emit('game:finished', { game: this });
     await this.logEvent('Game finished.', 'game');
-    for (const rule of this.rules) await rule.teardown();
-    for (const player of this.players) await this.teardownPlayerAttachments(player);
+    await this.teardownGameExtensions();
     return true;
   }
 
@@ -310,6 +330,11 @@ export class Game extends Stats {
   async teardownPlayerAttachments(player) {
     for (const item of player.inventory) await item.teardown?.();
     for (const effect of player.effects) await effect.teardown?.();
+  }
+
+  async teardownGameExtensions() {
+    for (const rule of this.rules) await rule.teardown();
+    for (const player of this.players) await this.teardownPlayerAttachments(player);
   }
 
   async changeCurrentPlayer(playerOrId) {
