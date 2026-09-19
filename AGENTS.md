@@ -16,13 +16,14 @@ change without asking for confirmation. Never amend or rewrite an earlier visito
 ## Where changes belong
 
 - **Game content:** `src/lib/game/createGame.js`
+- **Stable content-free fixture:** `src/lib/game/createNeutralGame.js`
 - **Engine capability needed by many features:** `src/lib/engine/`
 - **Rendering and browser interaction:** `src/lib/components/`
 - **Shared styling:** `src/app.css`
 - **Tests:** `tests/`
 - **Working examples:** `src/lib/game/createShowcaseGame.svelte.js`
 
-Add real visitor content to `createGame.js`. Do not add it only to the showcase. Do not edit the engine when an existing object, hook, command, stat, or rule can express the idea. Do not add a package for something that can be written clearly in a few lines.
+Add real visitor content to `createGame.js`. Do not add it to `createNeutralGame.js` or only to the showcase. When a feature contains several related objects, keep them together in a plainly named module under `src/lib/game/content/` and import it from `createGame.js`. Do not introduce automatic discovery or a plugin framework. Do not edit the engine when an existing object, hook, command, stat, or rule can express the idea. Do not add a package for something that can be written clearly in a few lines.
 
 ## Engine model
 
@@ -55,14 +56,14 @@ All IDs should be stable strings and unique within their collection.
 | `Game` | `board` | `players`, `decks`, `dice`, `rules`, `actions`, `stats`, `phases` |
 | `Board` | array of squares | `addSquare`, `removeSquare`, coordinate-independent logical order |
 | `Square` | `id`, `name` | `description`, `coordinates`, `icon`, `colour`, `className`, `stats`; async `onLand`, `onLeave`, `onPass` hooks |
-| `Player` | `id`, `name` | `number`, `colour`, `position`, `active`, `icon`, `className`, `stats`, `inventory`, `effects`; normally created through the roster |
+| `Player` | `id`, `name` | `number`, `colour`, `position`, `active`, `icon`, `className`, `stats`, `inventory`, `effects`, `hand`; normally created through the roster |
 | `Die` | `id` | `name`, `sides`, `colour`, `stats`, custom `roll(context)` function |
 | `DiceRoll` | created by `game.rollDice()` | preserves `{ die, value }` results; has `total`, `min`, and `max` helpers |
 | `Card` | `id`, `name` | `description`, `image`, `icon`, `className`, `stats`; async `onDraw`, `onPlay`, `onDiscard` hooks |
-| `Deck` | `id`, `name` | `cards`, `stats`; `draw`, `discard`, `reset`, `shuffle` commands |
+| `Deck` | `id`, `name` | `cards`, `stats`; `addCard`, `removeCard`, `draw`, `discard`, `reset`, `shuffle` commands |
 | `Action` | `id`, `label`, `perform` | `description`, `available`, `variant`, `icon`, `emphasis`, `stats` |
-| `InventoryItem` | `id`, `name` | `description`, `metadata`, `stats`; behaviour normally comes from a rule or the feature that uses it |
-| `Effect` | `id`, `name` | `description`, `duration`, `metadata`, `stats`; behaviour normally comes from a rule |
+| `InventoryItem` | `id`, `name` | `description`, `metadata`, `stats`, event `handlers`; optional async `onAdd` and `onRemove` hooks |
+| `Effect` | `id`, `name` | `description`, `duration`, `metadata`, `stats`, event `handlers`; optional async `onAdd` and `onRemove` hooks |
 | `Rule` | `id`, `name` | `description`, `stats`, map of event `handlers` |
 | `Turn` | supplied by `Game` | configurable `phases`; current number, player ID, and phase |
 
@@ -70,7 +71,24 @@ All IDs should be stable strings and unique within their collection.
 
 ## Copyable feature examples
 
-Import the objects you use at the top of `createGame.js`, create them inside `createGame()`, and include them in the returned `Game` or its board.
+Import the objects you use at the top of `createGame.js`, create them inside `createGame()`, and pass them to `createNeutralGame({ decks, dice, rules, actions, squares })`. For a special square, call `createDefaultSquares()`, replace the desired entry, and pass that array as `squares`.
+
+The live composition should stay visibly simple:
+
+```js
+export function createGame() {
+  const squares = createDefaultSquares();
+  squares[36] = cabbagePatch;
+
+  return createNeutralGame({
+    squares,
+    decks: [chaosDeck],
+    dice: [oddDie],
+    rules: [cabbageDisaster],
+    actions: [shoutAction]
+  });
+}
+```
 
 ### Square
 
@@ -120,10 +138,10 @@ const chaosDeck = new Deck({
   stats: { theme: 'bad decisions' }
 });
 
-// Include `decks: [chaosDeck]` in the Game constructor.
+// Pass `decks: [chaosDeck]` to createNeutralGame().
 ```
 
-A deck tracks its full card list, draw pile, and discard pile. Drawing does not automatically give a card to a player. If the visitor wants playable cards, add an action or other mechanic that remembers the drawn card, then calls `card.play(player)` or `deck.discard(card, player)`. Inspect the showcase for a complete small example.
+A deck tracks its full card list, draw pile, and discard pile. The generic Decks tab lets the current player draw; drawn cards enter `player.hand` and appear in the Cards tab with Play and Discard controls. `game.playCard(card, player)` runs `onPlay` and then discards the card. Usually defining the card and including its deck in the game is enough.
 
 ### Die
 
@@ -137,7 +155,7 @@ const oddDie = new Die({
   roll: () => [1, 3, 5, 7, 9][Math.floor(Math.random() * 5)]
 });
 
-// Include it in `dice`, or later call `await game.addDie(oddDie)`.
+// Pass it in `dice`, or later call `await game.addDie(oddDie)`.
 ```
 
 The custom roll function may be async and receives `{ game, player }`. `await game.rollDice([dieA, dieB])` keeps each die's result instead of assuming only a total matters.
@@ -168,13 +186,18 @@ const springBoots = new InventoryItem({
   id: 'spring-boots',
   name: 'Spring Boots',
   description: 'Walking moves two extra squares.',
-  stats: { bonus: 2 }
+  stats: { bonus: 2 },
+  handlers: {
+    'player:moving': (_game, movement, owner, item) => {
+      if (movement.player === owner) movement.amount += item.getStat('bonus');
+    }
+  }
 });
 
 await player.addItem(springBoots);
 ```
 
-Items store persistent player-owned state. Give them behaviour through the square, card, action, or rule that cares about them. Add and remove them with `player.addItem(item)` and `player.removeItem(id)` so events and UI updates occur.
+Items store persistent player-owned state. Their handlers are active only while the owner carries them. Each handler receives `(game, event, owner, item)`. Add and remove items with `player.addItem(item)` and `player.removeItem(id)` so subscriptions, events, and UI updates occur.
 
 ### Effect
 
@@ -183,37 +206,38 @@ const rooted = new Effect({
   id: 'rooted',
   name: 'Rooted',
   description: 'Cannot walk.',
-  duration: 1
+  duration: 1,
+  handlers: {
+    'player:moving': (_game, movement, owner) => {
+      if (movement.player === owner) movement.cancel('Rooted players cannot walk.');
+    }
+  }
 });
 
 await player.addEffect(rooted);
 ```
 
-Effects describe state attached to a player. A rule supplies ongoing behaviour. Use `player.addEffect(effect)` and `player.removeEffect(id)` rather than editing `player.effects` directly during play.
+Effects describe state attached to a player. Their handler signature is `(game, event, owner, effect)`. Use `player.addEffect(effect)` and `player.removeEffect(id)` rather than editing `player.effects` directly during play. `duration` is currently descriptive; a feature that uses it should explicitly update or remove the effect.
 
 ### Rule
 
 ```js
-const troublesomeFootwear = new Rule({
-  id: 'troublesome-footwear',
-  name: 'Troublesome Footwear',
-  description: 'Spring Boots extend walks; Rooted cancels them.',
+const cabbageDisaster = new Rule({
+  id: 'cabbage-disaster',
+  name: 'Cabbage Disaster',
+  description: 'Whenever a one is rolled, everybody loses a cabbage.',
   handlers: {
-    'player:moving': (_game, movement) => {
-      if (movement.player.effects.some((effect) => effect.id === 'rooted')) {
-        movement.cancel('Rooted players cannot walk.');
-        return;
-      }
-      const boots = movement.player.inventory.find((item) => item.id === 'spring-boots');
-      if (boots) movement.amount += boots.getStat('bonus');
+    'dice:rolled': async (game, { roll }) => {
+      if (!roll.results.some(({ value }) => value === 1)) return;
+      for (const player of game.players) await player.decrementStat('cabbages');
     }
   }
 });
 
-// Include it in `rules: [troublesomeFootwear]`.
+// Pass it in `rules: [cabbageDisaster]`.
 ```
 
-Rules are installed when the game starts and removed when it finishes. Use them for behaviour spanning several objects or reacting globally. Keep behaviour belonging only to one square or card on that object's hook.
+Rules are installed when the game starts and removed when it finishes. Use them for behaviour spanning several objects or reacting globally. Keep behaviour belonging to a square, card, item, or effect on that object.
 
 ### Player
 
@@ -241,8 +265,14 @@ await player.move(3);
 await player.moveTo(20);
 await player.addItem(item);
 await player.addEffect(effect);
+await player.addCard(card);
 await game.rollDice(dice);
 await game.drawCard(deck, player);
+await game.playCard(card, player);
+await game.discardCard(card, player);
+await game.addDeck(deck);
+await game.addRule(rule);
+await game.addAction(action);
 await game.changePhase('action');
 await game.endTurn();
 ```
@@ -260,14 +290,18 @@ Common proposal/completion event pairs include:
 - `card:discarding` / `card:discarded`
 - `player:item-adding` / `player:item-added`
 - `player:effect-adding` / `player:effect-added`
+- `player:card-adding` / `player:card-added`
+- `deck:adding` / `deck:added`
+- `rule:adding` / `rule:added`
+- `action:adding` / `action:added`
 - `turn:starting` / `turn:started`
 - `turn:ending` / `turn:ended`
 
-Read the command that emits an event before relying on its detail fields. Proposal handlers share one mutable object and run in registration order. A cancelled command normally returns `null`, `false`, the previous value, or the unchanged position, depending on the command; check the local method when that distinction matters.
+Read the command that emits an event before relying on its detail fields. Proposal handlers share one mutable object and run in registration order. A cancelled command normally returns `null`, `false`, the previous value, or the unchanged position, depending on the command; check the local method when that distinction matters. Passing a reason to `event.cancel(reason)` adds that reason to the game log automatically.
 
 ## UI changes
 
-The existing UI automatically renders board squares, players, player stats, inventory, effects, dice, decks, cards, actions, and log entries. Add game content first and change a component only when the requested idea introduces genuinely new presentation.
+The existing UI automatically renders board squares, players, player stats, inventory, effects, dice, decks, player hands, cards, actions, and log entries. Add game content first and change a component only when the requested idea introduces genuinely new presentation.
 
 When editing Svelte:
 

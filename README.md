@@ -33,6 +33,8 @@ Small contributions are the point of the project. Some good starting ideas are:
 
 The main game content is assembled in [`src/lib/game/createGame.js`](src/lib/game/createGame.js). Engine objects live in [`src/lib/engine/`](src/lib/engine/), and Svelte components live in [`src/lib/components/`](src/lib/components/). Existing code is intended to be copied and adapted.
 
+The neutral engine setup lives separately in `createNeutralGame.js`, so experimental content cannot accidentally alter engine tests or the showcase. As the real game grows, put each larger feature in a plainly named module under `src/lib/game/content/` and import it from `createGame.js`.
+
 The project deliberately uses plain JavaScript, Svelte 5, and Bootstrap. Keep additions understandable to somebody learning the codebase, keep game behaviour in engine or game files, and preserve keyboard and screen-reader access when changing the interface.
 
 Instructions for coding agents are in [`AGENTS.md`](AGENTS.md).
@@ -55,6 +57,8 @@ The main game currently provides:
 - turns and phases;
 - one ordinary six-sided die;
 - generic actions, cards, decks, rules, effects, inventory, stats, events, and logging.
+
+Drawn cards live in player hands and can be played or discarded through the generic interface. Items and effects may carry their own event handlers, while rules handle behaviour that applies across the game.
 
 It intentionally has no scoring system, economy, win condition, or meaningful game content yet. Those are invitations, not omissions to tidy away all at once.
 
