@@ -20,6 +20,7 @@ export class Game extends Stats {
 
   constructor({ board, players = [], decks = [], dice = [], rules = [], actions = [], stats = {}, phases } = {}) {
     super(stats);
+    if (!board) throw new Error('A game needs a board');
     if (players.length > 8) throw new Error('A game supports at most 8 players');
     assertUniqueIds(players, 'player');
     assertUniqueIds(decks, 'deck');
@@ -27,16 +28,13 @@ export class Game extends Stats {
     assertUniqueIds(rules, 'rule');
     assertUniqueIds(actions, 'action');
     const usedNumbers = new Set();
-    const usedIds = new Set();
     for (const player of players) {
       player.number ??= Array.from({ length: 8 }, (_, index) => index + 1).find((number) => !usedNumbers.has(number));
       if (!Number.isInteger(player.number) || player.number < 1 || player.number > 8 || usedNumbers.has(player.number)) {
         throw new Error('Player number must be unique and between 1 and 8');
       }
-      if (!player.id || usedIds.has(player.id)) throw new Error('Player ID must be present and unique');
       player.colour ??= playerColours[player.number - 1];
       usedNumbers.add(player.number);
-      usedIds.add(player.id);
     }
     this.board = board;
     this.board.game = this;

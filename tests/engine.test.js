@@ -192,6 +192,7 @@ describe('generic engine objects', () => {
     expect(() => new Deck({ id: 'deck', name: 'Deck', cards: duplicateCards })).toThrow('Card ID already exists');
     const duplicateSquares = [new Square({ id: 'same', name: 'One' }), new Square({ id: 'same', name: 'Two' })];
     expect(() => new Board(duplicateSquares)).toThrow('Square ID already exists');
+    expect(() => new Game()).toThrow('needs a board');
   });
 
   it('changes arbitrary stats on players and squares and emits events', async () => {
