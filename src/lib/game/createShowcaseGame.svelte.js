@@ -125,8 +125,6 @@ export function createShowcaseGame() {
     await player?.incrementStat('penguins', 8);
   };
   const campusDeck = new Deck({ id: 'campus', name: 'Campus Encounters', stats: { edition: 'open day' }, cards: [libraryCard, penguinCard] });
-  game.decks = [curiosityDeck, campusDeck];
-  for (const deck of game.decks) game.attach(deck);
 
   const bonusDie = new Die({ id: 'bonus-d4', name: 'Bonus die', sides: 4, colour: '#dcecd3', stats: { temperament: 'friendly' } });
   const cursedDie = new Die({
@@ -134,9 +132,6 @@ export function createShowcaseGame() {
     stats: { curse: 'rolls 1 while Sleepy, otherwise 7' },
     roll: ({ player }) => player?.effects.some((effect) => effect.id === 'sleepy') ? 1 : 7
   });
-  game.dice.push(bonusDie, cursedDie);
-  game.attach(bonusDie);
-  game.attach(cursedDie);
 
   const observer = new Rule({
     id: 'observer', name: 'Clockwork Observer', description: 'Counts rolls, played cards, and deck changes.',
@@ -177,7 +172,6 @@ export function createShowcaseGame() {
       }
     }
   });
-  game.rules.push(observer, effectsRule);
 
   const spoon = new InventoryItem({ id: 'spoon', name: 'Silver Spoon', description: 'Doubles the reward for passing the Cabbage Patch.', stats: { polish: 8, lucky: true } });
   const players = [
@@ -269,9 +263,15 @@ export function createShowcaseGame() {
         }
       })) })
   ];
-  game.actions.push(...showcaseActions);
-
   async function populate() {
+    await game.removeDeck('deck-1');
+    await game.addDeck(curiosityDeck);
+    await game.addDeck(campusDeck);
+    await game.addDie(bonusDie);
+    await game.addDie(cursedDie);
+    await game.addRule(observer);
+    await game.addRule(effectsRule);
+    for (const action of showcaseActions) await game.addAction(action);
     for (const player of players) await game.addPlayer(player);
     // Keep a populated discard pile without consuming the first interactive card.
     const discarded = await campusDeck.draw(null);
