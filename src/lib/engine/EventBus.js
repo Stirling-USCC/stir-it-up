@@ -41,7 +41,8 @@ export class EventBus {
     }
   }
 
-  async emitCancellable(type, detail = {}) {
+  async emitCancellable(types, detail = {}) {
+    types = Array.isArray(types) ? types : [types];
     const event = {
       ...detail,
       cancelled: false,
@@ -51,8 +52,10 @@ export class EventBus {
         this.reason = reason;
       }
     };
-    await this.emit(type, event);
-    if (event.cancelled) await this.emit('command:cancelled', { type, reason: event.reason, event });
+    for (const type of types) await this.emit(type, event);
+    if (event.cancelled) {
+      await this.emit('command:cancelled', { type: types.at(-1), reason: event.reason, event });
+    }
     return event;
   }
 }

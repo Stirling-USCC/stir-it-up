@@ -15,7 +15,6 @@ export class Stats {
   }
 
   async addStat(name, value) {
-    if (this.hasStat(name)) throw new Error(`Stat already exists: ${name}`);
     return this.applyStatChange(name, value, 'add');
   }
 
@@ -49,7 +48,6 @@ export class Stats {
   }
 
   async removeStat(name) {
-    if (!this.hasStat(name)) return false;
     const previous = this.getStat(name);
     const change = await this.prepareStatChange({ name, previous, value: undefined, operation: 'remove' });
     if (change.cancelled) return false;
@@ -63,12 +61,9 @@ export class Stats {
 
   async prepareStatChange(detail) {
     if (!this.game) return { ...detail, cancelled: false };
-    const change = await this.game.events.emitCancellable('object:stat-changing', { object: this, ...detail });
-    if (this.statEventType) {
-      const changingType = this.statEventType.replace(/changed$/, 'changing');
-      await this.game.events.emit(changingType, change);
-    }
-    return change;
+    const types = ['object:stat-changing'];
+    if (this.statEventType) types.push(this.statEventType.replace(/changed$/, 'changing'));
+    return this.game.events.emitCancellable(types, { object: this, ...detail });
   }
 
   async emitStatChange(name, previous, value) {

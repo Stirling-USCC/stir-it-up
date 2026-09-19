@@ -64,6 +64,25 @@ describe('EventBus', () => {
     expect(event.reason).toBe('Not today');
     expect(calls).toEqual(['changed:5', 'cancelled:5', 'observed:true']);
   });
+
+  it('passes a cancellable event through several event types before finalising it', async () => {
+    const bus = new EventBus();
+    const calls = [];
+    bus.on('object:changing', (event) => {
+      event.value += 1;
+      calls.push('generic');
+    });
+    bus.on('player:changing', (event) => {
+      event.cancel('Player change blocked');
+      calls.push(`player:${event.value}`);
+    });
+    bus.on('command:cancelled', ({ type }) => calls.push(`cancelled:${type}`));
+
+    const event = await bus.emitCancellable(['object:changing', 'player:changing'], { value: 1 });
+
+    expect(event.value).toBe(2);
+    expect(calls).toEqual(['generic', 'player:2', 'cancelled:player:changing']);
+  });
 });
 
 describe('cancellable command events', () => {
@@ -112,6 +131,7 @@ describe('cancellable command events', () => {
     expect(await player.setStat('cabbages', 4)).toBe(8);
     expect(await player.setStat('forbidden', 1)).toBeUndefined();
     expect(player.hasStat('forbidden')).toBe(false);
+    expect(game.log.some((entry) => entry.message === 'Forbidden stat')).toBe(true);
 
     game.events.on('die:resolving', (roll) => { roll.value = 6; });
     expect((await game.rollDice()).total).toBe(6);
