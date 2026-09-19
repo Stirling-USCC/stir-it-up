@@ -160,25 +160,7 @@ export function createShowcaseGame() {
     }
   });
   const effectsRule = new Rule({
-    id: 'effects-rule', name: 'Visible Consequences', description: 'Effects and items can modify or cancel commands and react after events.', handlers: {
-      'player:moving': async (game, movement) => {
-        if (movement.player.effects.some((effect) => effect.id === 'rooted')) {
-          movement.cancel('Rooted players cannot walk.');
-          return;
-        }
-        if (movement.player.inventory.some((item) => item.id === 'spring-boots')) {
-          movement.amount += 2;
-          await game.logEvent(`Spring Boots added 2 to ${movement.player.name}'s movement.`, 'rule');
-        }
-      },
-      'dice:rolled': async (game, { player }) => {
-        if (!player) return;
-        if (player.effects.some((effect) => effect.id === 'sparkly')) await player.incrementStat('sparkles');
-        if (player.effects.some((effect) => effect.id === 'sleepy')) await player.decrementStat('caffeine');
-        if (player.effects.some((effect) => effect.id === 'buzzing')) await player.incrementStat('caffeine', 2);
-        if (player.inventory.some((item) => item.id === 'hat')) await player.incrementStat('hatLuck');
-        await game.logEvent(`${player.name}'s effects and items reacted to the roll.`, 'rule');
-      },
+    id: 'effects-rule', name: 'Attachment Observer', description: 'Observes items and effects being added or removed.', handlers: {
       'player:effect-added': async (game, { player, effect }) => {
         await player.incrementStat('effectChanges');
         await game.logEvent(`${effect.name} took effect on ${player.name}.`, 'rule');
@@ -201,10 +183,31 @@ export function createShowcaseGame() {
   const players = [
     new Player({ id: 'showcase-1', name: 'Recursive Potato', position: 0,
       stats: { cabbages: 17, caffeine: 8, dignity: 'questionable', ready: true },
-      inventory: [spoon, new InventoryItem({ id: 'hat', name: 'Paper Hat', description: 'A roll grants one hatLuck while carried.' })],
+      inventory: [spoon, new InventoryItem({
+        id: 'hat', name: 'Paper Hat', description: 'A roll grants one hatLuck while carried.',
+        handlers: {
+          'dice:rolled': async (_game, { player }, owner) => {
+            if (player === owner) await owner.incrementStat('hatLuck');
+          }
+        }
+      })],
       effects: [
-        new Effect({ id: 'sparkly', name: 'Sparkly', description: 'A roll grants one sparkle.', duration: 3, stats: { intensity: 'maximum' } }),
-        new Effect({ id: 'sleepy', name: 'Sleepy', description: 'A roll costs one caffeine and makes the cursed die roll 1.' })
+        new Effect({
+          id: 'sparkly', name: 'Sparkly', description: 'A roll grants one sparkle.', duration: 3, stats: { intensity: 'maximum' },
+          handlers: {
+            'dice:rolled': async (_game, { player }, owner) => {
+              if (player === owner) await owner.incrementStat('sparkles');
+            }
+          }
+        }),
+        new Effect({
+          id: 'sleepy', name: 'Sleepy', description: 'A roll costs one caffeine and makes the cursed die roll 1.',
+          handlers: {
+            'dice:rolled': async (_game, { player }, owner) => {
+              if (player === owner) await owner.decrementStat('caffeine');
+            }
+          }
+        })
       ]
     }),
     new Player({ id: 'showcase-2', name: 'Caffeinated Goblin', position: 0, stats: { caffeine: 9, votes: 2 } }),
@@ -231,17 +234,40 @@ export function createShowcaseGame() {
     new Action({ id: 'showcase-reset-campus', label: 'Reset Campus', description: 'Return Campus cards to the draw pile so Library Shortcut can be played.', available: playing, perform: () => campusDeck.reset() }),
     new Action({ id: 'showcase-toggle-buzz', label: 'Toggle Buzzing', description: 'Add or remove an effect; it changes caffeine on rolls.', available: playing, perform: (game, player) => player.effects.some((effect) => effect.id === 'buzzing')
       ? player.removeEffect('buzzing')
-      : player.addEffect(new Effect({ id: 'buzzing', name: 'Buzzing', description: 'A roll grants two caffeine.', duration: 2 })) }),
+      : player.addEffect(new Effect({
+        id: 'buzzing', name: 'Buzzing', description: 'A roll grants two caffeine.', duration: 2,
+        handlers: {
+          'dice:rolled': async (_game, { player: rollingPlayer }, owner) => {
+            if (rollingPlayer === owner) await owner.incrementStat('caffeine', 2);
+          }
+        }
+      })) }),
     new Action({ id: 'showcase-remove-sleepy', label: 'Remove Sleepy', description: 'Change the cursed die back to its normal showcase value.', available: (game, player) => playing(game, player) && player.effects.some((effect) => effect.id === 'sleepy'), perform: (game, player) => player.removeEffect('sleepy') }),
     new Action({ id: 'showcase-toggle-spoon', label: 'Toggle Spoon', description: 'Add or remove the Silver Spoon and compare Cabbage Patch rewards.', available: playing, perform: (game, player) => player.inventory.some((item) => item.id === 'spoon')
       ? player.removeItem('spoon')
       : player.addItem(new InventoryItem({ id: 'spoon', name: spoon.name, description: spoon.description, stats: { ...spoon.stats } })) }),
     new Action({ id: 'showcase-toggle-boots', label: 'Toggle Spring Boots', description: 'Spring Boots add two to proposed walking movement.', available: playing, perform: (game, player) => player.inventory.some((item) => item.id === 'spring-boots')
       ? player.removeItem('spring-boots')
-      : player.addItem(new InventoryItem({ id: 'spring-boots', name: 'Spring Boots', description: 'Adds two squares to walking movement.' })) }),
+      : player.addItem(new InventoryItem({
+        id: 'spring-boots', name: 'Spring Boots', description: 'Adds two squares to walking movement.', stats: { bonus: 2 },
+        handlers: {
+          'player:moving': async (game, movement, owner, item) => {
+            if (movement.player !== owner) return;
+            movement.amount += item.getStat('bonus');
+            await game.logEvent(`Spring Boots added 2 to ${owner.name}'s movement.`, 'item');
+          }
+        }
+      })) }),
     new Action({ id: 'showcase-toggle-rooted', label: 'Toggle Rooted', description: 'Rooted cancels walking movement before it happens.', available: playing, perform: (game, player) => player.effects.some((effect) => effect.id === 'rooted')
       ? player.removeEffect('rooted')
-      : player.addEffect(new Effect({ id: 'rooted', name: 'Rooted', description: 'Prevents walking movement.' })) })
+      : player.addEffect(new Effect({
+        id: 'rooted', name: 'Rooted', description: 'Prevents walking movement.',
+        handlers: {
+          'player:moving': (_game, movement, owner) => {
+            if (movement.player === owner) movement.cancel('Rooted players cannot walk.');
+          }
+        }
+      })) })
   ];
   game.actions.push(...showcaseActions);
 

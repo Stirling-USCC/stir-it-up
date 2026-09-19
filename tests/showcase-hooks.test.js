@@ -80,7 +80,7 @@ describe('interactive showcase hooks', () => {
     expect(curiosityDeck.drawPile).toHaveLength(3);
   });
 
-  it('uses a custom die and reacts to effects and inventory through rules', async () => {
+  it('uses a custom die and reacts through item and effect handlers', async () => {
     const { game, players, observer } = await startedShowcase();
     const player = players[0];
     const cursedDie = game.dice.find((die) => die.id === 'cursed-d8');
@@ -108,7 +108,7 @@ describe('interactive showcase hooks', () => {
     expect(game.log.some((entry) => entry.message.includes('Silver Spoon no longer helps'))).toBe(true);
   });
 
-  it('demonstrates rules modifying and cancelling proposed movement', async () => {
+  it('demonstrates attachments modifying and cancelling proposed movement', async () => {
     const { game, players } = await startedShowcase();
     const player = players[0];
 
