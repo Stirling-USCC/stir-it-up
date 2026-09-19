@@ -12,7 +12,7 @@ import { Action } from '../src/lib/engine/Action.js';
 import { Rule } from '../src/lib/engine/Rule.js';
 import { createNeutralGame as createGame } from '../src/lib/game/createNeutralGame.js';
 import { Die } from '../src/lib/engine/Die.svelte.js';
-import { findSquareInDirection } from '../src/lib/components/boardNavigation.js';
+import { activeSquareId, findSquareInDirection } from '../src/lib/components/boardNavigation.js';
 import { tokenPositions } from '../src/lib/components/tokenPositions.js';
 
 describe('EventBus', () => {
@@ -478,6 +478,17 @@ describe('generic engine objects', () => {
 });
 
 describe('the default board and spatial navigation', () => {
+  it('falls back to the first square when the focused square is removed', () => {
+    const squares = [
+      new Square({ id: 'first', name: 'First' }),
+      new Square({ id: 'second', name: 'Second' })
+    ];
+    expect(activeSquareId(squares, 'second')).toBe('second');
+    squares.pop();
+    expect(activeSquareId(squares, 'second')).toBe('first');
+    expect(activeSquareId([], 'second')).toBe(null);
+  });
+
   it('has 100 squares in a left-to-right, top-to-bottom 10 by 10 layout', () => {
     const squares = createGame().board.squares;
     expect(squares).toHaveLength(100);

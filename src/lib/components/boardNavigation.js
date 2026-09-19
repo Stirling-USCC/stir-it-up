@@ -1,4 +1,8 @@
 // Navigation follows board-space coordinates, independently of square order or CSS layout.
+export function activeSquareId(squares, focusedId) {
+  return squares.some((square) => square.id === focusedId) ? focusedId : squares[0]?.id ?? null;
+}
+
 export function findSquareInDirection(squares, currentSquare, direction) {
   if (!currentSquare) return null;
   const length = Math.hypot(direction.x, direction.y);

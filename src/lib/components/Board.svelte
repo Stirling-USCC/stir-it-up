@@ -1,9 +1,10 @@
 <script>
   import Square from './Square.svelte';
-  import { findSquareInDirection } from './boardNavigation.js';
+  import { activeSquareId, findSquareInDirection } from './boardNavigation.js';
   let { game } = $props();
   let boardElement = $state();
   let focusedId = $state(null);
+  let tabbableSquareId = $derived(activeSquareId(game.board.squares, focusedId));
   let layout = $derived.by(() => {
     const coordinates = game.board.squares.map((square) => square.coordinates);
     const minX = Math.floor(Math.min(...coordinates.map((point) => point.x)));
@@ -53,7 +54,7 @@
         {@const x = square.coordinates.x - layout.minX}
         {@const y = square.coordinates.y - layout.minY}
         <Square {square} players={game.players.filter((player) => player.position === square.position)}
-          currentPlayerId={game.turn.currentPlayerId} tabindex={(focusedId ?? game.board.squares[0]?.id) === square.id ? 0 : -1}
+          currentPlayerId={game.turn.currentPlayerId} tabindex={tabbableSquareId === square.id ? 0 : -1}
           onfocus={() => focusedId = square.id} {onKeydown}
           cellStyle={`grid-column:${Math.floor(x) + 1};grid-row:${Math.floor(y) + 1};translate:${(x % 1) * 100}% ${(y % 1) * 100}%`} />
       {/each}
