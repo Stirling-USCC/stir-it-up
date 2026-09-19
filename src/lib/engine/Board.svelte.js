@@ -11,6 +11,10 @@ export class Board {
   }
 
   async addSquare(square, index = this.squares.length) {
+    const addition = await this.game?.events.emitCancellable('board:square-adding', { board: this, square, index }) ?? { square, index };
+    if (addition.cancelled) return null;
+    square = addition.square;
+    index = addition.index;
     if (square?.id == null) throw new Error('A square needs an ID');
     if (!Number.isInteger(index) || index < 0 || index > this.squares.length) {
       throw new RangeError('Square index is outside the board');
@@ -39,22 +43,26 @@ export class Board {
     const id = typeof squareOrId === 'string' ? squareOrId : squareOrId.id;
     const index = this.squares.findIndex((square) => square.id === id);
     if (index < 0) return null;
+    const removal = await this.game?.events.emitCancellable('board:square-removing', { board: this, square: this.squares[index], index }) ?? { square: this.squares[index] };
+    if (removal.cancelled) return null;
+    const removalIndex = this.squares.indexOf(removal.square);
+    if (removalIndex < 0) throw new Error('Square to remove is not on this board');
     if (this.squares.length === 1 && this.game?.players.length) {
       throw new Error('Cannot remove the last square while players are on the board');
     }
-    const [square] = this.squares.splice(index, 1);
+    const [square] = this.squares.splice(removalIndex, 1);
     this.reindexSquares();
     if (this.game) {
       square.game = null;
       const positionChanges = [];
       for (const player of this.game.players) {
         let position = player.position;
-        if (position > index) position -= 1;
+        if (position > removalIndex) position -= 1;
         if (position >= this.squares.length) position = this.squares.length - 1;
         const change = player.updatePositionAfterBoardChange(position);
         if (change) positionChanges.push(change);
       }
-      await this.game.events.emit('board:square-removed', { board: this, square, index });
+      await this.game.events.emit('board:square-removed', { board: this, square, index: removalIndex });
       for (const change of positionChanges) await this.game.events.emit('player:position-rebased', change);
       await this.game.logEvent(`${square.name} was removed from the board.`, 'board');
     }

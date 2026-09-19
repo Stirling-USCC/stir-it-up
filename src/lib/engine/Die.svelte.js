@@ -13,8 +13,13 @@ export class Die extends Stats {
   }
 
   async roll(context = {}) {
-    const value = await this.rollValue(context);
-    if (!Number.isFinite(value)) throw new TypeError(`Die ${this.id} returned a nonnumeric value`);
-    return value;
+    const rolling = await this.game?.events.emitCancellable('die:rolling', { die: this, context }) ?? { context };
+    if (rolling.cancelled) return null;
+    const rolledValue = await this.rollValue(rolling.context);
+    const result = await this.game?.events.emitCancellable('die:resolving', { die: this, context: rolling.context, value: rolledValue }) ?? { value: rolledValue };
+    if (result.cancelled) return null;
+    if (!Number.isFinite(result.value)) throw new TypeError(`Die ${this.id} returned a nonnumeric value`);
+    await this.game?.events.emit('die:rolled', { die: this, context: rolling.context, value: result.value });
+    return result.value;
   }
 }

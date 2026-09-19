@@ -160,7 +160,18 @@ export function createShowcaseGame() {
     }
   });
   const effectsRule = new Rule({
-    id: 'effects-rule', name: 'Visible Consequences', description: 'Effects and items change player stats on domain events.', handlers: {
+    id: 'effects-rule', name: 'Visible Consequences', description: 'Effects and items can modify or cancel commands and react after events.', handlers: {
+      'player:moving': async (game, movement) => {
+        if (movement.player.effects.some((effect) => effect.id === 'rooted')) {
+          movement.cancel('Rooted players cannot walk.');
+          await game.logEvent(`${movement.player.name}'s movement was cancelled by Rooted.`, 'rule');
+          return;
+        }
+        if (movement.player.inventory.some((item) => item.id === 'spring-boots')) {
+          movement.amount += 2;
+          await game.logEvent(`Spring Boots added 2 to ${movement.player.name}'s movement.`, 'rule');
+        }
+      },
       'dice:rolled': async (game, { player }) => {
         if (!player) return;
         if (player.effects.some((effect) => effect.id === 'sparkly')) await player.incrementStat('sparkles');
@@ -225,7 +236,13 @@ export function createShowcaseGame() {
     new Action({ id: 'showcase-remove-sleepy', label: 'Remove Sleepy', description: 'Change the cursed die back to its normal showcase value.', available: (game, player) => playing(game, player) && player.effects.some((effect) => effect.id === 'sleepy'), perform: (game, player) => player.removeEffect('sleepy') }),
     new Action({ id: 'showcase-toggle-spoon', label: 'Toggle Spoon', description: 'Add or remove the Silver Spoon and compare Cabbage Patch rewards.', available: playing, perform: (game, player) => player.inventory.some((item) => item.id === 'spoon')
       ? player.removeItem('spoon')
-      : player.addItem(new InventoryItem({ id: 'spoon', name: spoon.name, description: spoon.description, stats: { ...spoon.stats } })) })
+      : player.addItem(new InventoryItem({ id: 'spoon', name: spoon.name, description: spoon.description, stats: { ...spoon.stats } })) }),
+    new Action({ id: 'showcase-toggle-boots', label: 'Toggle Spring Boots', description: 'Spring Boots add two to proposed walking movement.', available: playing, perform: (game, player) => player.inventory.some((item) => item.id === 'spring-boots')
+      ? player.removeItem('spring-boots')
+      : player.addItem(new InventoryItem({ id: 'spring-boots', name: 'Spring Boots', description: 'Adds two squares to walking movement.' })) }),
+    new Action({ id: 'showcase-toggle-rooted', label: 'Toggle Rooted', description: 'Rooted cancels walking movement before it happens.', available: playing, perform: (game, player) => player.effects.some((effect) => effect.id === 'rooted')
+      ? player.removeEffect('rooted')
+      : player.addEffect(new Effect({ id: 'rooted', name: 'Rooted', description: 'Prevents walking movement.' })) })
   ];
   game.actions.push(...showcaseActions);
 

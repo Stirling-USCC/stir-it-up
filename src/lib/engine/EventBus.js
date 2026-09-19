@@ -40,4 +40,18 @@ export class EventBus {
       await entry.handler(detail);
     }
   }
+
+  async emitCancellable(type, detail = {}) {
+    const event = {
+      ...detail,
+      cancelled: false,
+      reason: '',
+      cancel(reason = '') {
+        this.cancelled = true;
+        this.reason = reason;
+      }
+    };
+    await this.emit(type, event);
+    return event;
+  }
 }

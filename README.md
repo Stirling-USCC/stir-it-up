@@ -15,11 +15,25 @@ Open the URL printed by Vite. `npm run build` checks the production bundle, `npm
 
 `src/lib/engine/` contains ordinary JavaScript classes. `Game.svelte.js`, `Player.svelte.js`, `Board.svelte.js`, `Square.svelte.js`, `Deck.svelte.js`, `Turn.svelte.js`, and `Stats.svelte.js` use Svelte 5 `$state` fields. Components read those fields directly, so a command changing a player or stat updates the board and panels without a refresh. Each page creates its own in-memory game session. SvelteKit server rendering remains enabled; there is no persistence or networking yet.
 
-Game state describes what is true now. Commands change what is true. Events describe what happened. Svelte renders what is true and reacts to what happened.
+Game state describes what is true now. Commands change what is true. Present-tense events describe a proposed change; past-tense events describe what happened. Svelte renders what is true and reacts to events.
 
 Use subject methods for changes: `await player.move(-5)`, `await player.setStat('cabbages', 12)`, `await player.addItem(item)`, or `await square.setStat('difficulty', 2)`. The methods are async because they await domain event listeners. Stats are generic named values on players, squares, cards, decks, dice, rules, effects, items, and the game. `getStat` and `hasStat` are synchronous; `addStat`, `setStat`, `incrementStat`, `decrementStat`, and `removeStat` are async. `addStat` requires the name to be absent; incrementing a missing stat starts at zero. Numeric operations reject nonnumeric values.
 
-`EventBus.emit` calls listeners one at a time and awaits each. Engine commands update canonical state, emit domain events, and add persistent human-readable log entries. The toast component subscribes to `dice:rolled` separately; toasts are transient UI state. A future animation listener can also await its work without putting animation code in the engine.
+`EventBus.emit` calls listeners one at a time and awaits each. Commands first use `emitCancellable` for events such as `player:moving`, `card:playing`, and `object:stat-changing`. A listener can modify the proposed values or call `event.cancel(reason)`. The command then validates the final values, changes state unless cancelled, and emits a completed event such as `player:moved`, `card:played`, or `object:stat-changed`. Cancellation prevents the command but does not stop later listeners from seeing the proposed event.
+
+```js
+new Rule({
+    id: 'heavy-boots',
+    name: 'Heavy Boots',
+    handlers: {
+        'player:moving': (_game, movement) => {
+            movement.amount -= 1;
+        }
+    }
+});
+```
+
+Engine commands also add persistent human-readable log entries. The toast component subscribes to `dice:rolled` separately; toasts are transient UI state. A future animation listener can await a completed event without putting animation code in the engine.
 
 ## Extend it
 

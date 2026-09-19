@@ -23,8 +23,8 @@ export function createGame() {
       id: 'roll', label: 'Roll', icon: 'bi-dice-6', variant: 'primary', emphasis: 'primary',
       available: (game, player) => game.status === 'playing' && !!player && game.turn.phase === 'roll',
       perform: async (game) => {
-        await game.rollDice();
-        await game.changePhase('move');
+        const roll = await game.rollDice();
+        if (roll) await game.changePhase('move');
       }
     }),
     new Action({

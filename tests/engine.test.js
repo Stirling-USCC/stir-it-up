@@ -41,6 +41,90 @@ describe('EventBus', () => {
     await bus.emit('step');
     expect(calls).toEqual(['first']);
   });
+
+  it('passes one mutable cancellable event through every listener in order', async () => {
+    const bus = new EventBus();
+    const calls = [];
+    bus.on('thing:changing', async (event) => {
+      await Promise.resolve();
+      event.value += 2;
+      calls.push(`changed:${event.value}`);
+    });
+    bus.on('thing:changing', (event) => {
+      event.cancel('Not today');
+      calls.push(`cancelled:${event.value}`);
+    });
+    bus.on('thing:changing', (event) => calls.push(`observed:${event.cancelled}`));
+
+    const event = await bus.emitCancellable('thing:changing', { value: 3 });
+    expect(event.value).toBe(5);
+    expect(event.cancelled).toBe(true);
+    expect(event.reason).toBe('Not today');
+    expect(calls).toEqual(['changed:5', 'cancelled:5', 'observed:true']);
+  });
+});
+
+describe('cancellable command events', () => {
+  it('lets sequential rules modify or cancel movement before square hooks run', async () => {
+    const game = createGame();
+    const player = await game.addPlayer();
+    const completed = [];
+    let cancelNext = false;
+    game.events.on('player:moving', async (movement) => {
+      await Promise.resolve();
+      movement.amount += 2;
+    });
+    game.events.on('player:moving', (movement) => {
+      if (cancelNext) movement.cancel('Movement blocked');
+    });
+    game.events.on('player:moved', (movement) => completed.push(movement));
+
+    expect(await player.move(3)).toBe(5);
+    expect(completed[0]).toMatchObject({ from: 0, to: 5, amount: 5, mode: 'relative' });
+    cancelNext = true;
+    expect(await player.move(4)).toBe(5);
+    expect(player.position).toBe(5);
+    expect(completed).toHaveLength(1);
+  });
+
+  it('validates modified command values and reports only completed changes', async () => {
+    const game = createGame();
+    const player = await game.addPlayer();
+    const completed = [];
+    game.events.on('player:moved', (movement) => completed.push(movement));
+    game.events.on('player:moving', (movement) => { movement.amount = 1.5; });
+
+    await expect(player.move(2)).rejects.toThrow('whole squares');
+    expect(player.position).toBe(0);
+    expect(completed).toHaveLength(0);
+  });
+
+  it('allows stats, dice and cards to be modified or cancelled before execution', async () => {
+    const game = createGame();
+    const player = await game.addPlayer();
+    game.events.on('player:stat-changing', (change) => {
+      if (change.name === 'cabbages') change.value *= 2;
+      if (change.name === 'forbidden') change.cancel('Forbidden stat');
+    });
+    expect(await player.setStat('cabbages', 4)).toBe(8);
+    expect(await player.setStat('forbidden', 1)).toBeUndefined();
+    expect(player.hasStat('forbidden')).toBe(false);
+
+    game.events.on('die:resolving', (roll) => { roll.value = 6; });
+    expect((await game.rollDice()).total).toBe(6);
+
+    const card = new Card({ id: 'interruptible', name: 'Interruptible' });
+    const deck = new Deck({ id: 'interruptions', name: 'Interruptions', cards: [card] });
+    game.decks.push(deck);
+    game.attach(deck);
+    const cancelDraw = game.events.on('card:drawing', (draw) => draw.cancel('Deck locked'));
+    expect(await deck.draw(player)).toBe(null);
+    expect(deck.drawPile).toEqual([card]);
+    cancelDraw();
+    expect(await deck.draw(player)).toBe(card);
+    game.events.on('card:playing', (play) => play.cancel('Card silenced'));
+    expect(await card.play(player)).toBe(false);
+  });
 });
 
 describe('generic engine objects', () => {

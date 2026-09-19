@@ -16,14 +16,23 @@ export class Stats {
 
   async addStat(name, value) {
     if (this.hasStat(name)) throw new Error(`Stat already exists: ${name}`);
-    return this.setStat(name, value);
+    return this.applyStatChange(name, value, 'add');
   }
 
   async setStat(name, value) {
+    return this.applyStatChange(name, value, 'set');
+  }
+
+  async applyStatChange(name, value, operation) {
     const previous = this.getStat(name);
-    this.stats[name] = value;
-    await this.emitStatChange(name, previous, value);
-    return value;
+    const change = await this.prepareStatChange({ name, previous, value, operation });
+    if (change.cancelled) return previous;
+    if (typeof change.name !== 'string' || !change.name) throw new TypeError('Stat name must be non-empty text');
+    const actualPrevious = this.getStat(change.name);
+    if (operation === 'add' && this.hasStat(change.name)) throw new Error(`Stat already exists: ${change.name}`);
+    this.stats[change.name] = change.value;
+    await this.emitStatChange(change.name, actualPrevious, change.value);
+    return change.value;
   }
 
   async incrementStat(name, amount = 1) {
@@ -42,9 +51,24 @@ export class Stats {
   async removeStat(name) {
     if (!this.hasStat(name)) return false;
     const previous = this.getStat(name);
-    delete this.stats[name];
-    await this.emitStatChange(name, previous, undefined);
+    const change = await this.prepareStatChange({ name, previous, value: undefined, operation: 'remove' });
+    if (change.cancelled) return false;
+    if (typeof change.name !== 'string' || !change.name) throw new TypeError('Stat name must be non-empty text');
+    if (!this.hasStat(change.name)) return false;
+    const actualPrevious = this.getStat(change.name);
+    delete this.stats[change.name];
+    await this.emitStatChange(change.name, actualPrevious, undefined);
     return true;
+  }
+
+  async prepareStatChange(detail) {
+    if (!this.game) return { ...detail, cancelled: false };
+    const change = await this.game.events.emitCancellable('object:stat-changing', { object: this, ...detail });
+    if (this.statEventType) {
+      const changingType = this.statEventType.replace(/changed$/, 'changing');
+      await this.game.events.emit(changingType, change);
+    }
+    return change;
   }
 
   async emitStatChange(name, previous, value) {

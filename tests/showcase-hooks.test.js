@@ -107,4 +107,19 @@ describe('interactive showcase hooks', () => {
     expect(player.getStat('cabbages')).toBe(18); // Without Spoon, the pass is worth one.
     expect(game.log.some((entry) => entry.message.includes('Silver Spoon no longer helps'))).toBe(true);
   });
+
+  it('demonstrates rules modifying and cancelling proposed movement', async () => {
+    const { game, players } = await startedShowcase();
+    const player = players[0];
+
+    await perform(game, 'showcase-toggle-boots');
+    await perform(game, 'showcase-walk-six');
+    expect(player.position).toBe(8);
+    expect(game.log.some((entry) => entry.message.includes('Spring Boots added 2'))).toBe(true);
+
+    await perform(game, 'showcase-toggle-rooted');
+    await perform(game, 'showcase-walk-six');
+    expect(player.position).toBe(8);
+    expect(game.log.some((entry) => entry.message.includes('movement was cancelled by Rooted'))).toBe(true);
+  });
 });

@@ -11,8 +11,11 @@ export class Card extends Stats {
   async onDiscard(_game, _player) {}
 
   async play(player = this.game?.getCurrentPlayer() ?? null) {
-    await this.onPlay(this.game, player);
-    await this.game?.events.emit('card:played', { card: this, player });
-    await this.game?.logEvent(`${player?.name ?? 'Someone'} played ${this.name}.`, 'card');
+    const play = await this.game?.events.emitCancellable('card:playing', { card: this, player }) ?? { player };
+    if (play.cancelled) return false;
+    await this.onPlay(this.game, play.player);
+    await this.game?.events.emit('card:played', { card: this, player: play.player });
+    await this.game?.logEvent(`${play.player?.name ?? 'Someone'} played ${this.name}.`, 'card');
+    return true;
   }
 }

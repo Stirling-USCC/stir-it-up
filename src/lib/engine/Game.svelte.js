@@ -80,6 +80,10 @@ export class Game extends Stats {
   }
 
   async addDie(die) {
+    const addition = await this.events.emitCancellable('die:adding', { die });
+    if (addition.cancelled) return null;
+    die = addition.die;
+    if (!die?.id) throw new Error('A die needs an ID');
     if (this.dice.some((existing) => existing.id === die.id)) throw new Error(`Die ID already exists: ${die.id}`);
     this.attach(die);
     this.dice.push(die);
@@ -91,7 +95,11 @@ export class Game extends Stats {
     const id = typeof dieOrId === 'string' ? dieOrId : dieOrId.id;
     const index = this.dice.findIndex((die) => die.id === id);
     if (index < 0) return null;
-    const [die] = this.dice.splice(index, 1);
+    const removal = await this.events.emitCancellable('die:removing', { die: this.dice[index] });
+    if (removal.cancelled) return null;
+    const removalIndex = this.dice.indexOf(removal.die);
+    if (removalIndex < 0) throw new Error('Die to remove is not in this game');
+    const [die] = this.dice.splice(removalIndex, 1);
     die.game = null;
     await this.events.emit('die:removed', { die });
     return die;
@@ -108,8 +116,13 @@ export class Game extends Stats {
   async addPlayer(player) {
     if (this.status !== 'waiting') throw new Error('The roster is locked after the game starts');
     if (this.players.length >= 8) throw new Error('A game supports at most 8 players');
+    player ??= new Player({ id: crypto.randomUUID(), name: randomPlayerName() });
+    const addition = await this.events.emitCancellable('player:adding', { player });
+    if (addition.cancelled) return null;
+    player = addition.player;
+    if (this.status !== 'waiting') throw new Error('The roster is locked after the game starts');
+    if (this.players.length >= 8) throw new Error('A game supports at most 8 players');
     const number = Array.from({ length: 8 }, (_, index) => index + 1).find((candidate) => !this.players.some((existing) => existing.number === candidate));
-    player ??= new Player({ id: crypto.randomUUID(), number, name: randomPlayerName(), colour: playerColours[number - 1] });
     if (player.number == null) player.number = number;
     if (!Number.isInteger(player.number) || player.number < 1 || player.number > 8 || this.players.some((existing) => existing.number === player.number)) {
       throw new Error('Player number must be unique and between 1 and 8');
@@ -129,7 +142,11 @@ export class Game extends Stats {
     const id = typeof playerOrId === 'string' ? playerOrId : playerOrId.id;
     const index = this.players.findIndex((player) => player.id === id);
     if (index < 0) return null;
-    const [player] = this.players.splice(index, 1);
+    const removal = await this.events.emitCancellable('player:removing', { player: this.players[index] });
+    if (removal.cancelled) return null;
+    const removalIndex = this.players.indexOf(removal.player);
+    if (removalIndex < 0) throw new Error('Player to remove is not in this game');
+    const [player] = this.players.splice(removalIndex, 1);
     player.game = null;
     for (const item of player.inventory) item.game = null;
     for (const effect of player.effects) effect.game = null;
@@ -143,27 +160,52 @@ export class Game extends Stats {
     const first = this.players.find((player) => player.active);
     if (!first) throw new Error('Add an active player before starting');
     for (const rule of this.rules) await rule.setup(this);
+    const starting = await this.events.emitCancellable('game:starting', { game: this, firstPlayer: first });
+    if (starting.cancelled) {
+      for (const rule of this.rules) await rule.teardown();
+      return false;
+    }
+    if (!this.players.includes(starting.firstPlayer) || !starting.firstPlayer.active) {
+      for (const rule of this.rules) await rule.teardown();
+      throw new Error('The first player must be active and in the game');
+    }
     this.status = 'playing';
+    await this.changeCurrentPlayer(starting.firstPlayer.id);
+    if (this.turn.currentPlayerId !== starting.firstPlayer.id) {
+      this.status = 'waiting';
+      for (const rule of this.rules) await rule.teardown();
+      return false;
+    }
     await this.events.emit('game:started', { game: this });
     await this.logEvent('Game started.', 'game');
-    await this.changeCurrentPlayer(first.id);
     await this.beginTurn();
+    return true;
   }
 
   async finishGame() {
     if (this.status === 'finished') return;
+    const finishing = await this.events.emitCancellable('game:finishing', { game: this });
+    if (finishing.cancelled) return false;
+    await this.changeCurrentPlayer(null);
+    if (this.turn.currentPlayerId !== null) return false;
     this.status = 'finished';
     await this.events.emit('game:finished', { game: this });
     await this.logEvent('Game finished.', 'game');
     for (const rule of this.rules) await rule.teardown();
+    return true;
   }
 
   async changeCurrentPlayer(playerOrId) {
-    const id = playerOrId === null ? null : typeof playerOrId === 'string' ? playerOrId : playerOrId.id;
-    const player = id === null ? null : this.getPlayerById(id);
+    let id = playerOrId === null ? null : typeof playerOrId === 'string' ? playerOrId : playerOrId.id;
+    let player = id === null ? null : this.getPlayerById(id);
     if (id !== null && (!player || !player.active)) throw new Error('Current player must be active and in the game');
     const previousPlayerId = this.turn.currentPlayerId;
     if (previousPlayerId === id) return player;
+    const change = await this.events.emitCancellable('turn:player-changing', { player, previousPlayerId });
+    if (change.cancelled) return this.getCurrentPlayer();
+    player = change.player;
+    id = player?.id ?? null;
+    if (id !== null && (!this.players.includes(player) || !player.active)) throw new Error('Current player must be active and in the game');
     this.turn.currentPlayerId = id;
     await this.events.emit('turn:player-changed', { player, previousPlayerId });
     if (player) await this.logEvent(`Current player: ${player.name}.`, 'turn');
@@ -171,28 +213,42 @@ export class Game extends Stats {
   }
 
   async changePhase(phase) {
-    if (!this.turn.phases.includes(phase)) throw new Error(`Unknown turn phase: ${phase}`);
     const previous = this.turn.phase;
     if (previous === phase) return;
-    this.turn.phase = phase;
-    await this.events.emit('turn:phase-changed', { phase, previous, player: this.getCurrentPlayer() });
+    const change = await this.events.emitCancellable('turn:phase-changing', { phase, previous, player: this.getCurrentPlayer() });
+    if (change.cancelled) return previous;
+    if (!this.turn.phases.includes(change.phase)) throw new Error(`Unknown turn phase: ${change.phase}`);
+    this.turn.phase = change.phase;
+    await this.events.emit('turn:phase-changed', { phase: change.phase, previous, player: this.getCurrentPlayer() });
+    return change.phase;
   }
 
   async beginTurn() {
     if (this.status !== 'playing') throw new Error('Game is not playing');
     const player = this.getCurrentPlayer();
     if (!player || !player.active) throw new Error('A turn needs an active current player');
-    this.turn.number += 1;
+    const starting = await this.events.emitCancellable('turn:starting', { number: this.turn.number + 1, player });
+    if (starting.cancelled) return false;
+    if (!Number.isInteger(starting.number) || starting.number < 1) throw new Error('Turn number must be a positive integer');
+    if (!this.players.includes(starting.player) || !starting.player.active) throw new Error('A turn needs an active player in the game');
+    if (starting.player.id !== this.turn.currentPlayerId) {
+      await this.changeCurrentPlayer(starting.player.id);
+      if (this.turn.currentPlayerId !== starting.player.id) return false;
+    }
+    this.turn.number = starting.number;
     await this.changePhase(this.turn.phases[0]);
-    await this.events.emit('turn:started', { number: this.turn.number, player });
-    await this.logEvent(`Turn ${this.turn.number}: ${player.name}.`, 'turn');
+    await this.events.emit('turn:started', { number: this.turn.number, player: starting.player });
+    await this.logEvent(`Turn ${this.turn.number}: ${starting.player.name}.`, 'turn');
     if (this.turn.phases[1]) await this.changePhase(this.turn.phases[1]);
+    return true;
   }
 
   async endTurn() {
     if (this.status !== 'playing') throw new Error('Game is not playing');
     const player = this.getCurrentPlayer();
     if (!player) throw new Error('A turn needs a current player');
+    const ending = await this.events.emitCancellable('turn:ending', { number: this.turn.number, player });
+    if (ending.cancelled) return false;
     await this.changePhase(this.turn.phases.at(-1));
     await this.events.emit('turn:ended', { number: this.turn.number, player });
     await this.logEvent(`${player.name} ended their turn.`, 'turn');
@@ -200,21 +256,28 @@ export class Game extends Stats {
     if (next) {
       await this.changeCurrentPlayer(next.id);
       await this.beginTurn();
-      return;
+      return true;
     }
-    await this.changeCurrentPlayer(null);
-    await this.finishGame();
+    return this.finishGame();
   }
 
   async rollDice(dice = this.dice) {
     if (!Array.isArray(dice)) dice = [dice];
     if (dice.length === 0) throw new Error('No dice are configured');
-    const player = this.getCurrentPlayer();
+    const rolling = await this.events.emitCancellable('dice:rolling', { dice: [...dice], player: this.getCurrentPlayer() });
+    if (rolling.cancelled) return null;
+    if (!Array.isArray(rolling.dice) || rolling.dice.length === 0) throw new Error('A roll needs at least one die');
+    const player = rolling.player;
     const results = [];
-    for (const die of dice) results.push({ die, value: await die.roll({ game: this, player }) });
+    for (const die of rolling.dice) {
+      if (!die || typeof die.roll !== 'function') throw new TypeError('A roll can only contain dice');
+      const value = await die.roll({ game: this, player });
+      if (value !== null) results.push({ die, value });
+    }
+    if (results.length === 0) return null;
     const roll = new DiceRoll(results, player?.id ?? null);
     this.lastRoll = roll;
-    await this.events.emit('dice:rolled', { dice, player, roll, result: roll });
+    await this.events.emit('dice:rolled', { dice: rolling.dice, player, roll, result: roll });
     const rolledValues = results.length === 1
       ? String(results[0].value)
       : results.map(({ die, value }) => `${die.name} ${value}`).join(' · ');
