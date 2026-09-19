@@ -1,6 +1,5 @@
 import { Action } from '../engine/Action.js';
 import { Board } from '../engine/Board.svelte.js';
-import { Deck } from '../engine/Deck.svelte.js';
 import { Die } from '../engine/Die.svelte.js';
 import { Game } from '../engine/Game.svelte.js';
 import { Square } from '../engine/Square.svelte.js';
@@ -47,7 +46,7 @@ export function createNeutralGame({ squares = createDefaultSquares(), decks = []
 
   return new Game({
     board: new Board(squares),
-    decks: [new Deck({ id: 'deck-1', name: 'Deck 1' }), ...decks],
+    decks,
     dice: [new Die({ id: 'demo-d6', name: 'Movement die', sides: 6, colour: '#fdf1da' }), ...dice],
     rules,
     actions: [...actions, ...extraActions]

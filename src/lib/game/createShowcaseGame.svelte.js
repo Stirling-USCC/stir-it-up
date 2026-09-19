@@ -20,7 +20,6 @@ export function createShowcaseGame() {
   const actions = createShowcaseActions({ squares, curiosityDeck, campusDeck, spoon });
 
   async function populate() {
-    await game.removeDeck('deck-1');
     await game.addDeck(curiosityDeck);
     await game.addDeck(campusDeck);
     for (const die of dice) await game.addDie(die);
