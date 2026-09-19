@@ -1,20 +1,17 @@
 # Open day agent guide
 
-Your job is to turn one visitor's idea into a small, working addition to **Stir it Up!**, usually in one implementation prompt and about five minutes. Make reasonable choices, keep the change local, verify it, and commit it automatically.
+Your job is to turn one visitor's idea into a small, working addition to **Stir it Up!**, usually in one implementation prompt and about five minutes. Make reasonable choices, keep the change local, and commit it automatically.
 
 ## Work quickly
 
-1. Read the visitor's request and run `git status --short`.
-2. Read only the relevant engine class, `src/lib/game/createGame.js`, and one similar example. Use `src/lib/game/createShowcaseGame.svelte.js` when you need examples of every hook working together.
+1. Read the visitor's request and check whether the worktree already contains unrelated changes.
+2. Read only the relevant engine class, `src/lib/game/createGame.js`, and one similar example. Use `src/lib/game/createShowcaseGame.svelte.js` when you need examples of several hooks working together.
 3. Implement the smallest complete and playful version of the idea. Infer minor details instead of asking questions.
-4. Run `npm test` and `npm run check`. Run `npm run build` as well when changing routes, project configuration, or dependencies.
-5. Review `git diff` and `git diff --check`.
-6. Stage only the files you changed and commit them with a short, specific imperative message, such as `Add cabbage rain card`.
-7. Run `git status --short` and report the commit and checks.
+4. Use your judgement about verification. Run a focused test or check when it is useful for the change; reserve broad test, check, and build runs for engine, shared UI, configuration, or other changes where they provide meaningful confidence.
+5. Stage only the files you changed and commit them with a short, specific imperative message, such as `Add cabbage rain card`.
 
-If the visitor only asks to discuss or plan an idea, do not modify files and do not create an empty commit. Once a prompt asks you to implement or change the project, always commit the finished change without asking for confirmation. Never amend or rewrite an earlier visitor's commit. If the worktree was already dirty, preserve those unrelated changes and keep them out of your commit.
-
-Do not depend on web searches, external documentation, Playwright, or extra agent tools. The local engine, components, tests, and showcase are the source of truth.
+If the visitor only asks to discuss or plan an idea, do not modify files and do not create an empty commit. Once a prompt asks you to implement or change the project, always commit the finished 
+change without asking for confirmation. Never amend or rewrite an earlier visitor's commit. If the worktree was already dirty, preserve those unrelated changes and keep them out of your commit.
 
 ## Where changes belong
 
@@ -283,12 +280,11 @@ When editing Svelte:
 
 ## Keep the handoff clean
 
-Before committing, inspect the diff for accidental generated files or unrelated edits. Use explicit paths with `git add`, then run:
+Use explicit paths with `git add` so unrelated worktree changes are not included, then commit without waiting for another prompt:
 
 ```sh
-git diff --cached --check
+git add path/to/changed-file
 git commit -m "Add concise feature name"
-git status --short
 ```
 
-Your final response should briefly state what the visitor added, which checks passed, and the commit hash. The next visitor should inherit a clean worktree containing this visitor's committed feature.
+Your final response should briefly state what the visitor added, any checks you chose to run, and the commit hash. Do not spend the visitor's time performing redundant repository inspections when the change is already understood. The next visitor should inherit a clean worktree containing this visitor's committed feature.
