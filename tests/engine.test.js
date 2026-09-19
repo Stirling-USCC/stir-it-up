@@ -267,6 +267,29 @@ describe('generic engine objects', () => {
     expect(player.getStat('confidence')).toBe(1);
   });
 
+  it('keeps the card owner consistent through play and discard proposals', async () => {
+    const game = createGame();
+    const owner = await game.addPlayer();
+    const other = await game.addPlayer();
+    const card = new Card({ id: 'ownership', name: 'Ownership' });
+    const deck = new Deck({ id: 'ownership-deck', name: 'Ownership Deck', cards: [card] });
+    await game.addDeck(deck);
+    await game.drawCard(deck, owner);
+
+    const redirect = game.events.on('card:playing', (play) => { play.player = other; });
+    await expect(game.playCard(card, owner)).rejects.toThrow('owner');
+    expect(owner.hand).toContain(card);
+    expect(deck.discardPile).not.toContain(card);
+    redirect();
+
+    let discardedBy = null;
+    card.onDiscard = (_game, player) => { discardedBy = player; };
+    await deck.discard(card);
+    expect(discardedBy).toBe(owner);
+    expect(owner.hand).not.toContain(card);
+    expect(deck.discardPile).toContain(card);
+  });
+
   it('runs the demonstration actions through two players and updates turn state', async () => {
     const game = createGame();
     const first = await game.addPlayer();

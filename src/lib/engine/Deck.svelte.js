@@ -76,6 +76,7 @@ export class Deck extends Stats {
     card = draw.card;
     player = draw.player;
     if (!this.drawPile.includes(card)) throw new Error('Card to draw is not in this deck draw pile');
+    if (player && this.game && !this.game.players.includes(player)) throw new Error('A card can only be drawn by a player in this game');
     const drawIndex = this.drawPile.indexOf(card);
     this.drawPile.splice(drawIndex, 1);
     if (player) {
@@ -85,9 +86,9 @@ export class Deck extends Stats {
         return null;
       }
     }
-    await card.onDraw(this.game, draw.player);
-    await this.game?.events.emit('card:drawn', { deck: this, card, player: draw.player });
-    await this.game?.logEvent(`${draw.player?.name ?? 'Someone'} drew ${card.name} from ${this.name}.`, 'card');
+    await card.onDraw(this.game, player);
+    await this.game?.events.emit('card:drawn', { deck: this, card, player });
+    await this.game?.logEvent(`${player?.name ?? 'Someone'} drew ${card.name} from ${this.name}.`, 'card');
     return card;
   }
 
@@ -103,10 +104,13 @@ export class Deck extends Stats {
       throw new Error('Card to discard must be a drawn card from this deck');
     }
     player = discard.player ?? card.owner ?? null;
+    if (card.owner && player !== card.owner) throw new Error('A held card must be discarded by its owner');
+    if (player && this.game && !this.game.players.includes(player)) throw new Error('The player discarding a card must be in this game');
+    if (card.owner && !card.owner.hand.includes(card)) throw new Error('Card ownership is inconsistent with the player hand');
     if (player?.hand.includes(card) && !await player.removeCard(card)) return null;
     this.discardPile.push(card);
-    await card.onDiscard(this.game, discard.player);
-    await this.game?.events.emit('card:discarded', { deck: this, card, player: discard.player });
+    await card.onDiscard(this.game, player);
+    await this.game?.events.emit('card:discarded', { deck: this, card, player });
     await this.game?.logEvent(`${card.name} was discarded to ${this.name}.`, 'card');
     return card;
   }
