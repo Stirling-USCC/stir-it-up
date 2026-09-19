@@ -1,4 +1,4 @@
-import { createGame } from './createGame.js';
+import { createNeutralGame } from './createNeutralGame.js';
 import { Action } from '../engine/Action.js';
 import { Card } from '../engine/Card.svelte.js';
 import { Deck } from '../engine/Deck.svelte.js';
@@ -11,7 +11,7 @@ import { Rule } from '../engine/Rule.js';
 // A temporary, interactive fixture. Every example uses the same public commands
 // and hooks that a contributor would use in the real game.
 export function createShowcaseGame() {
-  const game = createGame();
+  const game = createNeutralGame();
   const sampleSquares = [
     [0, 'Welcome Mat', 'Leaving starts the tour.', '🏁', '#f5dfa5', { visits: 12, mood: 'optimistic' }],
     [5, 'Cabbage Patch', 'Passing or landing grants cabbages.', '🥬', '#bfe6c2', { cabbages: 17 }],

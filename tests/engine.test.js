@@ -8,7 +8,7 @@ import { Game } from '../src/lib/engine/Game.svelte.js';
 import { Board } from '../src/lib/engine/Board.svelte.js';
 import { InventoryItem } from '../src/lib/engine/InventoryItem.js';
 import { Effect } from '../src/lib/engine/Effect.js';
-import { createGame } from '../src/lib/game/createGame.js';
+import { createNeutralGame as createGame } from '../src/lib/game/createNeutralGame.js';
 import { Die } from '../src/lib/engine/Die.svelte.js';
 import { findSquareInDirection } from '../src/lib/components/boardNavigation.js';
 import { tokenPositions } from '../src/lib/components/tokenPositions.js';
