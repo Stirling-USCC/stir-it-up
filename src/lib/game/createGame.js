@@ -12,8 +12,8 @@ export function createGame() {
     name: `Square ${position + 1}`,
     position,
     coordinates: {
-      x: Math.floor(position / 10) % 2 === 0 ? position % 10 : 9 - position % 10,
-      y: 9 - Math.floor(position / 10)
+      x: position % 10,
+      y: Math.floor(position / 10)
     }
   }));
 

@@ -189,15 +189,15 @@ describe('generic engine objects', () => {
 });
 
 describe('the default board and spatial navigation', () => {
-  it('has 100 squares in a serpentine 10 by 10 layout', () => {
+  it('has 100 squares in a left-to-right, top-to-bottom 10 by 10 layout', () => {
     const squares = createGame().board.squares;
     expect(squares).toHaveLength(100);
     expect(squares.map((square) => square.coordinates).slice(0, 11)).toEqual([
-      ...Array.from({ length: 10 }, (_, x) => ({ x, y: 9 })),
-      { x: 9, y: 8 }
+      ...Array.from({ length: 10 }, (_, x) => ({ x, y: 0 })),
+      { x: 0, y: 1 }
     ]);
-    expect(squares[19].coordinates).toEqual({ x: 0, y: 8 });
-    expect(squares[99].coordinates).toEqual({ x: 0, y: 0 });
+    expect(squares[19].coordinates).toEqual({ x: 9, y: 1 });
+    expect(squares[99].coordinates).toEqual({ x: 9, y: 9 });
     squares[37].coordinates = { x: 6.5, y: 3.25 };
     expect(squares[37].position).toBe(37);
   });
@@ -205,7 +205,7 @@ describe('the default board and spatial navigation', () => {
   it('navigates by coordinates on a grid and an irregular board', () => {
     const squares = createGame().board.squares;
     expect(findSquareInDirection(squares, squares[0], { x: 1, y: 0 })).toBe(squares[1]);
-    expect(findSquareInDirection(squares, squares[0], { x: 0, y: -1 })).toBe(squares[19]);
+    expect(findSquareInDirection(squares, squares[0], { x: 0, y: 1 })).toBe(squares[10]);
     expect(findSquareInDirection(squares, squares[0], { x: -1, y: 0 })).toBe(null);
     const [origin, nearDiagonal, right, distant] = [
       { position: 0, coordinates: { x: 0, y: 0 } },
