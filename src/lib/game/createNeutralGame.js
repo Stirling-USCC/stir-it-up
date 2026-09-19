@@ -7,8 +7,8 @@ import { Square } from '../engine/Square.svelte.js';
 
 // Stable, content-free game used by engine tests and the interactive showcase.
 // Visitor contributions belong in createGame.js so they cannot make these fixtures unpredictable.
-export function createNeutralGame() {
-  const squares = Array.from({ length: 100 }, (_, position) => new Square({
+export function createDefaultSquares() {
+  return Array.from({ length: 100 }, (_, position) => new Square({
     id: `square-${position + 1}`,
     name: `Square ${position + 1}`,
     position,
@@ -17,6 +17,9 @@ export function createNeutralGame() {
       y: Math.floor(position / 10)
     }
   }));
+}
+
+export function createNeutralGame({ squares = createDefaultSquares(), decks = [], dice = [], rules = [], actions: extraActions = [] } = {}) {
 
   const actions = [
     new Action({
@@ -44,8 +47,9 @@ export function createNeutralGame() {
 
   return new Game({
     board: new Board(squares),
-    decks: [new Deck({ id: 'deck-1', name: 'Deck 1' })],
-    dice: [new Die({ id: 'demo-d6', name: 'Movement die', sides: 6, colour: '#fdf1da' })],
-    actions
+    decks: [new Deck({ id: 'deck-1', name: 'Deck 1' }), ...decks],
+    dice: [new Die({ id: 'demo-d6', name: 'Movement die', sides: 6, colour: '#fdf1da' }), ...dice],
+    rules,
+    actions: [...actions, ...extraActions]
   });
 }

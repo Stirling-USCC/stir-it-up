@@ -154,6 +154,19 @@ describe('generic engine objects', () => {
     expect(await game.removeDeck(deck)).toBe(deck);
   });
 
+  it('composes static content into a neutral game without mutating fixtures later', () => {
+    const deck = new Deck({ id: 'extra-deck', name: 'Extra Deck' });
+    const die = new Die({ id: 'extra-die', name: 'Extra Die' });
+    const rule = new Rule({ id: 'extra-rule', name: 'Extra Rule' });
+    const action = new Action({ id: 'extra-action', label: 'Extra Action', perform: () => {} });
+    const game = createGame({ decks: [deck], dice: [die], rules: [rule], actions: [action] });
+
+    expect(game.decks).toContain(deck);
+    expect(game.dice).toContain(die);
+    expect(game.rules).toContain(rule);
+    expect(game.actions).toContain(action);
+  });
+
   it('rejects duplicate IDs in initial collections', () => {
     const duplicateCards = [new Card({ id: 'same', name: 'One' }), new Card({ id: 'same', name: 'Two' })];
     expect(() => new Deck({ id: 'deck', name: 'Deck', cards: duplicateCards })).toThrow('Card ID already exists');
