@@ -37,6 +37,7 @@ export class Deck extends Stats {
     if (removal.cancelled) return null;
     card = removal.card;
     if (!this.cards.includes(card)) throw new Error('Card to remove is not in this deck');
+    if (card.owner) throw new Error('Cannot remove a card while a player is holding it');
     this.cards.splice(this.cards.indexOf(card), 1);
     if (this.drawPile.includes(card)) this.drawPile.splice(this.drawPile.indexOf(card), 1);
     if (this.discardPile.includes(card)) this.discardPile.splice(this.discardPile.indexOf(card), 1);
@@ -72,8 +73,17 @@ export class Deck extends Stats {
     const draw = await this.game?.events.emitCancellable('card:drawing', { deck: this, card, player }) ?? { card, player };
     if (draw.cancelled) return null;
     card = draw.card;
+    player = draw.player;
     if (!this.drawPile.includes(card)) throw new Error('Card to draw is not in this deck draw pile');
-    this.drawPile.splice(this.drawPile.indexOf(card), 1);
+    const drawIndex = this.drawPile.indexOf(card);
+    this.drawPile.splice(drawIndex, 1);
+    if (player) {
+      const received = await player.addCard(card);
+      if (!received) {
+        this.drawPile.splice(drawIndex, 0, card);
+        return null;
+      }
+    }
     await card.onDraw(this.game, draw.player);
     await this.game?.events.emit('card:drawn', { deck: this, card, player: draw.player });
     await this.game?.logEvent(`${draw.player?.name ?? 'Someone'} drew ${card.name} from ${this.name}.`, 'card');
@@ -91,6 +101,8 @@ export class Deck extends Stats {
     if (!this.cards.includes(card) || this.drawPile.includes(card) || this.discardPile.includes(card)) {
       throw new Error('Card to discard must be a drawn card from this deck');
     }
+    player = discard.player ?? card.owner ?? null;
+    if (player?.hand.includes(card) && !await player.removeCard(card)) return null;
     this.discardPile.push(card);
     await card.onDiscard(this.game, discard.player);
     await this.game?.events.emit('card:discarded', { deck: this, card, player: discard.player });

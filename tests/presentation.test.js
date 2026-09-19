@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
 import { Action } from '../src/lib/engine/Action.js';
+import { Card } from '../src/lib/engine/Card.svelte.js';
 import { Effect } from '../src/lib/engine/Effect.js';
 import { InventoryItem } from '../src/lib/engine/InventoryItem.js';
 import { Player } from '../src/lib/engine/Player.svelte.js';
@@ -26,6 +27,7 @@ describe('compact player details and tabs', () => {
     id: 'test-player', name: 'Recursive Potato', number: 1,
     stats: { cabbages: 17 },
     inventory: [new InventoryItem({ id: 'spoon', name: 'Silver Spoon', stats: { polish: 8 } })],
+    hand: [new Card({ id: 'idea', name: 'Questionable Idea', description: 'Probably fine.', stats: { risk: 8 } })],
     effects: [new Effect({ id: 'sparkly', name: 'Sparkly', description: 'Glitters briefly.', duration: 3 })]
   });
   game.players.push(player);
@@ -37,7 +39,15 @@ describe('compact player details and tabs', () => {
     expect(html).toContain('cabbages');
     expect(html).toContain('17');
     expect(html).toContain('Inventory');
+    expect(html).toContain('Cards');
     expect(html).not.toContain('Silver Spoon');
+  });
+
+  it('renders the selected player’s cards in the lower panel', () => {
+    const html = render(DetailTabs, { props: { game, selectedPlayerId: player.id, activeTab: 'cards', onselecttab: () => {} } }).body;
+    expect(html).toContain("Recursive Potato's Cards");
+    expect(html).toContain('Questionable Idea');
+    expect(html).toContain('risk');
   });
 
   it('renders the selected player’s inventory in the lower panel', () => {

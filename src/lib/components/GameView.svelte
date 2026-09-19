@@ -29,7 +29,8 @@
       {#if game.status === 'waiting'}<PlayerRoster {game} />{:else}<ActionPanel {game} />{/if}
       <DiceDisplay {game} />
       {#if game.status !== 'waiting'}
-        <PlayerList {game} {selectedPlayerId} onselect={(id) => selectedPlayerId = id} oninventory={() => activeDetailTab = 'inventory'} />
+        <PlayerList {game} {selectedPlayerId} onselect={(id) => selectedPlayerId = id}
+          oninventory={() => activeDetailTab = 'inventory'} oncards={() => activeDetailTab = 'cards'} />
       {/if}
     </div>
   </aside>

@@ -1,12 +1,14 @@
 <script>
   import DeckList from './DeckList.svelte';
   import GameLog from './GameLog.svelte';
+  import PlayerHand from './PlayerHand.svelte';
   import StatsList from './StatsList.svelte';
 
   let { game, selectedPlayerId, activeTab, onselecttab } = $props();
   let selectedPlayer = $derived(game.players.find((player) => player.id === selectedPlayerId));
   const tabs = [
     { id: 'inventory', label: 'Inventory' },
+    { id: 'cards', label: 'Cards' },
     { id: 'decks', label: 'Decks' },
     { id: 'log', label: 'Event Log' }
   ];
@@ -55,6 +57,9 @@
       {:else}
         <p class="text-body-secondary small mb-0">Select a player to view their inventory.</p>
       {/if}
+    </div>
+    <div id="detail-panel-cards" role="tabpanel" aria-labelledby="detail-tab-cards" tabindex="0" hidden={activeTab !== 'cards'}>
+      <PlayerHand {game} player={selectedPlayer} />
     </div>
     <div id="detail-panel-decks" role="tabpanel" aria-labelledby="detail-tab-decks" tabindex="0" hidden={activeTab !== 'decks'}>
       <h3 class="visually-hidden">Decks</h3>

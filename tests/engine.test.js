@@ -213,6 +213,23 @@ describe('generic engine objects', () => {
     expect(deck.discardPile).toHaveLength(0);
   });
 
+  it('keeps drawn cards in canonical player hands and plays them into discard piles', async () => {
+    const game = createGame();
+    const player = await game.addPlayer();
+    const card = new Card({ id: 'confidence', name: 'Confidence' });
+    card.onPlay = (_game, owner) => owner.incrementStat('confidence');
+    const deck = new Deck({ id: 'hand-test', name: 'Hand Test', cards: [card] });
+    await game.addDeck(deck);
+
+    expect(await game.drawCard(deck, player)).toBe(card);
+    expect(player.hand).toEqual([card]);
+    expect(card.owner).toBe(player);
+    expect(await game.playCard(card, player)).toBe(true);
+    expect(player.hand).toHaveLength(0);
+    expect(deck.discardPile).toEqual([card]);
+    expect(player.getStat('confidence')).toBe(1);
+  });
+
   it('runs the demonstration actions through two players and updates turn state', async () => {
     const game = createGame();
     const first = await game.addPlayer();

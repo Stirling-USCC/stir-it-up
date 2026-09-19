@@ -58,8 +58,9 @@ export class Game extends Stats {
 
   attach(object) {
     object.game = this;
-    for (const item of object.inventory ?? []) item.game = this;
-    for (const effect of object.effects ?? []) effect.game = this;
+    for (const item of object.inventory ?? []) { item.game = this; item.owner = object; }
+    for (const effect of object.effects ?? []) { effect.game = this; effect.owner = object; }
+    for (const card of object.hand ?? []) { card.game = this; card.owner = object; }
     for (const card of object.cards ?? []) {
       card.game = this;
       card.deck = object;
@@ -244,6 +245,7 @@ export class Game extends Stats {
     player.game = null;
     for (const item of player.inventory) item.game = null;
     for (const effect of player.effects) effect.game = null;
+    for (const card of player.hand) card.owner = null;
     await this.events.emit('player:removed', { player });
     await this.logEvent(`${player.name} left the game.`, 'player');
     return player;
@@ -383,5 +385,21 @@ export class Game extends Stats {
     const deck = typeof deckOrId === 'string' ? this.decks.find((candidate) => candidate.id === deckOrId) : deckOrId;
     if (!deck || !this.decks.includes(deck)) throw new Error('Deck is not in this game');
     return deck.draw(player);
+  }
+
+  async playCard(card, player = this.getCurrentPlayer()) {
+    if (!player || !this.players.includes(player)) throw new Error('A player in this game must play the card');
+    if (!player.hand.includes(card)) throw new Error('Card is not in this player’s hand');
+    if (!await card.play(player)) return false;
+    if (card.deck) await card.deck.discard(card, player);
+    else await player.removeCard(card);
+    return true;
+  }
+
+  async discardCard(card, player = this.getCurrentPlayer()) {
+    if (!player || !this.players.includes(player)) throw new Error('A player in this game must discard the card');
+    if (!player.hand.includes(card)) throw new Error('Card is not in this player’s hand');
+    if (card.deck) return card.deck.discard(card, player);
+    return player.removeCard(card);
   }
 }

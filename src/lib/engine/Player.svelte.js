@@ -8,15 +8,18 @@ export class Player extends Stats {
   active = $state(true);
   inventory = $state([]);
   effects = $state([]);
+  hand = $state([]);
   statEventType = 'player:stat-changed';
 
-  constructor({ id, number = null, name, colour = null, position = 0, active = true, icon = '●', className = '', stats = {}, inventory = [], effects = [] }) {
+  constructor({ id, number = null, name, colour = null, position = 0, active = true, icon = '●', className = '', stats = {}, inventory = [], effects = [], hand = [] }) {
     super(stats);
     assertUniqueIds(inventory, 'item');
     assertUniqueIds(effects, 'effect');
+    assertUniqueIds(hand, 'card');
     Object.assign(this, { id, number, name, colour, position, active, icon, className });
     this.inventory = [...inventory];
     this.effects = [...effects];
+    this.hand = [...hand];
     this.game = null;
   }
 
@@ -139,5 +142,33 @@ export class Player extends Stats {
     await this.game?.events.emit('player:effect-removed', { player: this, effect });
     await this.game?.logEvent(`${this.name} lost ${effect.name}.`, 'effect');
     return effect;
+  }
+
+  async addCard(card) {
+    const addition = await this.game?.events.emitCancellable('player:card-adding', { player: this, card }) ?? { card };
+    if (addition.cancelled) return null;
+    card = addition.card;
+    if (!card?.id) throw new Error('A card needs an ID');
+    if (this.hand.some((existing) => existing.id === card.id)) throw new Error(`Card ID already exists in hand: ${card.id}`);
+    this.hand.push(card);
+    card.owner = this;
+    card.game = this.game;
+    await this.game?.events.emit('player:card-added', { player: this, card });
+    await this.game?.logEvent(`${this.name} received ${card.name}.`, 'card');
+    return card;
+  }
+
+  async removeCard(cardOrId) {
+    const id = typeof cardOrId === 'string' ? cardOrId : cardOrId.id;
+    let card = this.hand.find((candidate) => candidate.id === id);
+    if (!card) return null;
+    const removal = await this.game?.events.emitCancellable('player:card-removing', { player: this, card }) ?? { card };
+    if (removal.cancelled) return null;
+    card = removal.card;
+    if (!this.hand.includes(card)) throw new Error('Card to remove is not in this hand');
+    this.hand.splice(this.hand.indexOf(card), 1);
+    card.owner = null;
+    await this.game?.events.emit('player:card-removed', { player: this, card });
+    return card;
   }
 }
